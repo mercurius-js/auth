@@ -21,14 +21,15 @@
   },
   "homepage": "https://github.com/mercurius-js/auth",
   "devDependencies": {
-    "@types/node": "^14.14.37",
     "autocannon": "^7.0.5",
+    "concurrently": "^6.0.2",
     "fastify": "^3.0.2",
     "mercurius": "^7.3.3",
     "pre-commit": "^1.2.2",
     "snazzy": "^9.0.0",
     "standard": "^16.0.3",
-    "tap": "^15.0.2"
+    "tap": "^15.0.2",
+    "wait-on": "^5.3.0"
   },
   "dependencies": {
     "fastify-plugin": "^3.0.0",
