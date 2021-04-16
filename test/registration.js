@@ -5,6 +5,7 @@ const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { AssertionError } = require('assert')
 const mercuriusAuth = require('..')
+const { MER_AUTH_ERR_INVALID_OPTS } = require('../lib/errors')
 
 const schema = `
   type Query {
@@ -56,8 +57,7 @@ test('registration - should error if authContext not specified', async (t) => {
   try {
     await app.register(mercuriusAuth, {})
   } catch (error) {
-    // TODO: specific error
-    t.same(error, new Error('opts.authContext is not a function.'))
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authContext is not a function.'))
   }
 })
 
@@ -76,8 +76,7 @@ test('registration - should error if applyPolicy not specified', async (t) => {
       authContext: () => {}
     })
   } catch (error) {
-    // TODO: specific error
-    t.same(error, new Error('opts.applyPolicy is not a function.'))
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.applyPolicy is not a function.'))
   }
 })
 
