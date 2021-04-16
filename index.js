@@ -1,7 +1,7 @@
 'use strict'
 
 const fp = require('fastify-plugin')
-const { authContextHook, Policy } = require('./lib/hooks')
+const Auth = require('./lib/auth')
 
 function validateOpts (opts) {
   if (typeof opts.authContext !== 'function') {
@@ -17,13 +17,12 @@ const plugin = fp(
     // Validation
     validateOpts(opts)
 
-    // Build auth context hook
-    app.graphql.addHook('preExecution', authContextHook(opts.authContext))
+    const auth = new Auth(opts)
 
-    // Build apply policy hook
-    const policy = new Policy(opts)
-    app.graphql.addHook('preExecution', policy.applyPolicyHook.bind(policy))
-    app.graphql.addHook('onResolution', policy.onResolutionHook.bind(policy))
+    // Register hooks
+    app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
+    app.graphql.addHook('preExecution', auth.applyPolicyHook.bind(auth))
+    app.graphql.addHook('onResolution', auth.updateExecutionResultHook.bind(auth))
   },
   {
     name: 'mercurius-auth',
