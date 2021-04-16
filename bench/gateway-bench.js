@@ -1,18 +1,19 @@
 const autocannon = require('autocannon')
 
 const query = `query {
-  four: add(x: 2, y: 2)
-  six: add(x: 3, y: 3)
-  subtract(x: 3, y: 3)
-  messages {
-    title
-    public
-    private
+  me {
+    id
+    name
+    nickname: name
+    topPosts(count: 2) {
+      pid
+      author {
+        id
+      }
+    }
   }
-  adminMessages {
-    title
-    public
-    private
+  topPosts(count: 2) {
+    pid
   }
 }`
 
