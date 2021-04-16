@@ -158,7 +158,7 @@ async function createTestGatewayServer (t) {
   })
   gateway.register(mercuriusAuth, {
     authContext: (context) => {
-      context.auth = {
+      return {
         identity: context.reply.request.headers['x-user']
       }
     },

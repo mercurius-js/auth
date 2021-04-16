@@ -72,7 +72,7 @@ const resolvers = {
   }
 }
 
-test('registration - should protect the schema and not affect queries when everything is okay', async (t) => {
+test('basic - should protect the schema and not affect queries when everything is okay', async (t) => {
   t.plan(1)
 
   const app = Fastify()
@@ -84,7 +84,7 @@ test('registration - should protect the schema and not affect queries when every
   })
   app.register(mercuriusAuth, {
     authContext: (context) => {
-      context.auth = {
+      return {
         identity: context.reply.request.headers['x-user']
       }
     },
@@ -149,7 +149,7 @@ test('registration - should protect the schema and not affect queries when every
   })
 })
 
-test('registration - should protect the schema and error accordingly', async (t) => {
+test('basic - should protect the schema and error accordingly', async (t) => {
   t.plan(1)
 
   const app = Fastify()
@@ -161,7 +161,7 @@ test('registration - should protect the schema and error accordingly', async (t)
   })
   app.register(mercuriusAuth, {
     authContext: (context) => {
-      context.auth = {
+      return {
         identity: context.reply.request.headers['x-user']
       }
     },
@@ -213,31 +213,15 @@ test('registration - should protect the schema and error accordingly', async (t)
       adminMessages: null
     },
     errors: [
-      {
-        message: 'auth error',
-        locations: [{ line: 2, column: 3 }],
-        path: ['four']
-      },
-      {
-        message: 'auth error',
-        locations: [{ line: 3, column: 3 }],
-        path: ['six']
-      },
-      {
-        message: 'auth error',
-        locations: [{ line: 10, column: 3 }],
-        path: ['adminMessages']
-      },
-      {
-        message: 'auth error',
-        locations: [{ line: 8, column: 5 }],
-        path: ['messages', 'private']
-      }
+      { message: 'auth error', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'auth error', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'auth error', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
+      { message: 'auth error', locations: [{ line: 8, column: 5 }], path: ['messages', 'private'] }
     ]
   })
 })
 
-test('registration - should work alongside existing directives', async (t) => {
+test('basic - should work alongside existing directives', async (t) => {
   t.plan(1)
 
   const schema = `
@@ -287,7 +271,7 @@ test('registration - should work alongside existing directives', async (t) => {
   })
   app.register(mercuriusAuth, {
     authContext: (context) => {
-      context.auth = {
+      return {
         identity: context.reply.request.headers['x-user']
       }
     },
@@ -310,30 +294,111 @@ test('registration - should work alongside existing directives', async (t) => {
       subtract: 0
     },
     errors: [
-      {
-        message: 'auth error',
-        locations: [
-          {
-            line: 2,
-            column: 3
-          }
-        ],
-        path: [
-          'four'
-        ]
+      { message: 'auth error', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'auth error', locations: [{ line: 3, column: 3 }], path: ['six'] }
+    ]
+  })
+})
+
+test('basic - should handle when no fields within a type are allowed', async (t) => {
+  t.plan(1)
+
+  const schema = `
+  directive @auth(
+    requires: Role = ADMIN,
+  ) on OBJECT | FIELD_DEFINITION
+
+  enum Role {
+    ADMIN
+    REVIEWER
+    USER
+    UNKNOWN
+  }
+
+  type Message {
+    title: String! @auth(requires: ADMIN)
+    private: String! @auth(requires: ADMIN)
+  }
+
+  type Query {
+    add(x: Int, y: Int): Int @auth(requires: ADMIN)
+    subtract(x: Int, y: Int): Int
+    messages: [Message!]!
+  }
+`
+
+  const resolvers = {
+    Query: {
+      add: async (_, obj) => {
+        const { x, y } = obj
+        return x + y
       },
-      {
-        message: 'auth error',
-        locations: [
+      subtract: async (_, obj) => {
+        const { x, y } = obj
+        return x - y
+      },
+      messages: async () => {
+        return [
           {
-            line: 3,
-            column: 3
+            title: 'one',
+            private: 'private one'
+          },
+          {
+            title: 'two',
+            private: 'private two'
           }
-        ],
-        path: [
-          'six'
         ]
       }
+    }
+  }
+
+  const query = `query {
+  four: add(x: 2, y: 2)
+  six: add(x: 3, y: 3)
+  subtract(x: 3, y: 3)
+  messages {
+    title
+    private
+  }
+}`
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  app.register(mercuriusAuth, {
+    authContext: (context) => {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    applyPolicy: async (authPolicy, context) => {
+      return context.auth.identity === 'admin'
+    }
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-User': 'user' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(response.body), {
+    data: {
+      four: null,
+      six: null,
+      subtract: 0,
+      messages: null
+    },
+    errors: [
+      { message: 'auth error', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'auth error', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'auth error', locations: [{ line: 6, column: 5 }], path: ['messages', 'title'] },
+      { message: 'auth error', locations: [{ line: 7, column: 5 }], path: ['messages', 'private'] }
     ]
   })
 })

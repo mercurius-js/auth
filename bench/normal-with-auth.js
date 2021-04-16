@@ -14,7 +14,7 @@ app.register(mercurius, {
 
 app.register(mercuriusAuth, {
   authContext: (context) => {
-    context.auth = {
+    return {
       identity: context.reply.request.headers['x-user']
     }
   },
