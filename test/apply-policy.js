@@ -3,7 +3,7 @@
 const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
-const { GraphQLDirective, GraphQLField } = require('graphql')
+const { GraphQLDirective } = require('graphql')
 const mercuriusAuth = require('..')
 
 test('basic - apply policy should provide authDirectiveAST', async (t) => {
