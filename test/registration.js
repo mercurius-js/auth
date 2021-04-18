@@ -4,6 +4,7 @@ const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { AssertionError } = require('assert')
+const { GraphQLDirective, GraphQLError } = require('graphql')
 const mercuriusAuth = require('..')
 const { MER_AUTH_ERR_INVALID_OPTS } = require('../lib/errors')
 
@@ -80,6 +81,26 @@ test('registration - should error if applyPolicy not specified', async (t) => {
   }
 })
 
+test('registration - should error if applyPolicy not specified', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+
+  try {
+    await app.register(mercuriusAuth, {
+      authContext: () => {},
+      applyPolicy: () => {}
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authDirective is not a string or instance of GraphQLDirective.'))
+  }
+})
+
 test('registration - should register the plugin', async (t) => {
   t.plan(1)
 
@@ -92,7 +113,36 @@ test('registration - should register the plugin', async (t) => {
   })
   await app.register(mercuriusAuth, {
     authContext: () => {},
-    applyPolicy: () => {}
+    applyPolicy: () => {},
+    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
   })
   t.ok('mercurius auth plugin is registered')
+})
+
+test('registration - should handle invalid string based auth Directive definitions', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+
+  try {
+    await app.register(mercuriusAuth, {
+      authContext: (context) => {
+        return {
+          identity: context.reply.request.headers['x-user']
+        }
+      },
+      applyPolicy: async (authDirectiveAST, context) => {
+        return context.auth.identity === 'admin'
+      },
+      authDirective: 'invalid'
+    })
+  } catch (error) {
+    t.same(error, new GraphQLError('Syntax Error: Unexpected Name "invalid".', undefined, 'invalid', [0]))
+  }
 })

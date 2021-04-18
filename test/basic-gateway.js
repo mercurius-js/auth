@@ -4,6 +4,7 @@ const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
+const { GraphQLDirective } = require('graphql')
 
 async function createTestService (t, schema, resolvers = {}) {
   const service = Fastify()
@@ -162,9 +163,10 @@ async function createTestGatewayServer (t) {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authPolicy, context) => {
+    applyPolicy: async (authDirectiveAST, context) => {
       return context.auth.identity === 'admin'
-    }
+    },
+    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
   })
   return gateway
 }
