@@ -6,7 +6,7 @@ const mercurius = require('mercurius')
 const { GraphQLDirective } = require('graphql')
 const mercuriusAuth = require('..')
 
-test('basic - apply policy should provide authDirectiveAST', async (t) => {
+test('apply policy - should provide authDirectiveAST', async (t) => {
   t.plan(4)
 
   const app = Fastify()
@@ -73,7 +73,7 @@ test('basic - apply policy should provide authDirectiveAST', async (t) => {
   })
 })
 
-test('basic - apply policy should provide auth on context', async (t) => {
+test('apply policy - should provide auth on context', async (t) => {
   t.plan(2)
 
   const app = Fastify()
@@ -138,7 +138,7 @@ test('basic - apply policy should provide auth on context', async (t) => {
   })
 })
 
-test('basic - apply policy should provide field', async (t) => {
+test('apply policy - should provide field', async (t) => {
   t.plan(2)
 
   const app = Fastify()
@@ -203,7 +203,7 @@ test('basic - apply policy should provide field', async (t) => {
   })
 })
 
-test('basic - apply policy should access the field AST definition', async (t) => {
+test('apply policy - should access the field AST definition', async (t) => {
   t.plan(1)
 
   const app = Fastify()
