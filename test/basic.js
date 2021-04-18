@@ -89,7 +89,7 @@ test('basic - should protect the schema and not affect queries when everything i
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context) => {
+    applyPolicy: async (authDirectiveAST, context, field) => {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -167,7 +167,7 @@ test('basic - should protect the schema and error accordingly', async (t) => {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context) => {
+    applyPolicy: async (authDirectiveAST, context, field) => {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -278,7 +278,7 @@ test('basic - should work alongside existing directives', async (t) => {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context) => {
+    applyPolicy: async (authDirectiveAST, context, field) => {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -379,7 +379,7 @@ test('basic - should handle when no fields within a type are allowed', async (t)
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context) => {
+    applyPolicy: async (authDirectiveAST, context, field) => {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -428,7 +428,7 @@ test('basic - should support string based auth Directive definitions', async (t)
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context) => {
+    applyPolicy: async (authDirectiveAST, context, field) => {
       return context.auth.identity === 'admin'
     },
     authDirective

@@ -62,6 +62,8 @@ async function createTestGatewayServer (t) {
     requires: Role = ADMIN,
   ) on OBJECT | FIELD_DEFINITION
 
+  directive @notUsed on OBJECT | FIELD_DEFINITION
+
   enum Role {
     ADMIN
     REVIEWER
@@ -74,8 +76,8 @@ async function createTestGatewayServer (t) {
   }
 
   type User @key(fields: "id") {
-    id: ID!
-    name: String! @auth(requires: ADMIN)
+    id: ID! @notUsed
+    name: String! @auth(requires: ADMIN) @notUsed
   }`
   const userServiceResolvers = {
     Query: {
@@ -97,6 +99,8 @@ async function createTestGatewayServer (t) {
     requires: Role = ADMIN,
   ) on OBJECT | FIELD_DEFINITION
 
+  directive @notUsed on OBJECT | FIELD_DEFINITION
+
   enum Role {
     ADMIN
     REVIEWER
@@ -115,7 +119,7 @@ async function createTestGatewayServer (t) {
 
   type User @key(fields: "id") @extends {
     id: ID! @external
-    topPosts(count: Int!): [Post]
+    topPosts(count: Int!): [Post] @notUsed
   }`
   const postServiceResolvers = {
     Post: {
@@ -163,7 +167,7 @@ async function createTestGatewayServer (t) {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context) => {
+    applyPolicy: async (authDirectiveAST, context, field) => {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
