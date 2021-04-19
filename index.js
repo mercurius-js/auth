@@ -10,9 +10,13 @@ const plugin = fp(
 
     // Start auth and register hooks
     const auth = new Auth(opts)
-    app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
-    app.graphql.addHook('preExecution', auth.applyPolicyHook.bind(auth))
-    app.graphql.addHook('onResolution', auth.updateExecutionResultHook.bind(auth))
+
+    // Override resolvers with auth handlers
+    auth.registerAuthHandlers(app.graphql.schema)
+
+    if (typeof opts.authContext !== 'undefined') {
+      app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
+    }
   },
   {
     name: 'mercurius-auth',

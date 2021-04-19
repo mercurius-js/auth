@@ -55,7 +55,7 @@ const posts = {
   }
 }
 
-async function createTestGatewayServer (t) {
+async function createTestGatewayServer (t, authOpts) {
   // User service
   const userServiceSchema = `
   directive @auth(
@@ -77,7 +77,7 @@ async function createTestGatewayServer (t) {
 
   type User @key(fields: "id") {
     id: ID! @notUsed
-    name: String! @auth(requires: ADMIN) @notUsed
+    name: String @auth(requires: ADMIN) @notUsed
   }`
   const userServiceResolvers = {
     Query: {
@@ -161,13 +161,13 @@ async function createTestGatewayServer (t) {
       }]
     }
   })
-  gateway.register(mercuriusAuth, {
-    authContext: (context) => {
+  gateway.register(mercuriusAuth, authOpts || {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -259,7 +259,7 @@ test('gateway - should protect the schema if everything is not okay', async (t) 
 
   const res = await app.inject({
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'x-user': 'user' },
     url: '/graphql',
     body: JSON.stringify({ query })
   })
@@ -284,10 +284,158 @@ test('gateway - should protect the schema if everything is not okay', async (t) 
       topPosts: null
     },
     errors: [
-      { message: 'auth error', locations: [{ line: 13, column: 3 }], path: ['topPosts'] },
-      { message: 'auth error', locations: [{ line: 4, column: 5 }], path: ['me', 'name'] },
-      { message: 'auth error', locations: [{ line: 5, column: 5 }], path: ['me', 'nickname'] },
-      { message: 'auth error', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 'author'] }
+      { message: 'Failed auth policy check on topPosts', locations: [{ line: 13, column: 3 }], path: ['topPosts'] },
+      { message: 'Failed auth policy check on name', locations: [{ line: 4, column: 5 }], path: ['me', 'name'] },
+      { message: 'Failed auth policy check on name', locations: [{ line: 5, column: 5 }], path: ['me', 'nickname'] },
+      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 0, 'author'] },
+      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 1, 'author'] }
     ]
+  })
+})
+
+test('gateway - should handle custom errors', async (t) => {
+  t.plan(1)
+  const app = await createTestGatewayServer(t, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      if (context.auth.identity !== 'admin') {
+        return new Error(`custom auth error on ${info.fieldName}`)
+      }
+      return true
+    },
+    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+  })
+
+  const query = `query {
+  me {
+    id
+    name
+    nickname: name
+    topPosts(count: 2) {
+      pid
+      author {
+        id
+      }
+    }
+  }
+  topPosts(count: 2) {
+    pid
+  }
+}`
+
+  const res = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-user': 'user' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(res.body), {
+    data: {
+      me: {
+        id: 'u1',
+        name: null,
+        nickname: null,
+        topPosts: [
+          {
+            pid: 'p1',
+            author: null
+          },
+          {
+            pid: 'p3',
+            author: null
+          }
+        ]
+      },
+      topPosts: null
+    },
+    errors: [
+      { message: 'custom auth error on topPosts', locations: [{ line: 13, column: 3 }], path: ['topPosts'] },
+      { message: 'custom auth error on name', locations: [{ line: 4, column: 5 }], path: ['me', 'name'] },
+      { message: 'custom auth error on name', locations: [{ line: 5, column: 5 }], path: ['me', 'nickname'] },
+      { message: 'custom auth error on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 0, 'author'] },
+      { message: 'custom auth error on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 1, 'author'] }
+    ]
+  })
+})
+
+test('gateway - should handle when auth context is not defined', async (t) => {
+  t.plan(1)
+  const app = await createTestGatewayServer(t, {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      if (context.other.identity !== 'admin') {
+        return new Error(`custom auth error on ${info.fieldName}`)
+      }
+      return true
+    },
+    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+  })
+
+  app.graphql.addHook('preGatewayExecution', async (schema, document, context, service) => {
+    Object.assign(context, {
+      other: {
+        identity: context.reply.request.headers['x-user']
+      }
+    })
+  })
+
+  const query = `query {
+  me {
+    id
+    name
+    nickname: name
+    topPosts(count: 2) {
+      pid
+      author {
+        id
+      }
+    }
+  }
+  topPosts(count: 2) {
+    pid
+  }
+}`
+
+  const res = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-user': 'admin' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(res.body), {
+    data: {
+      me: {
+        id: 'u1',
+        name: 'John',
+        nickname: 'John',
+        topPosts: [
+          {
+            pid: 'p1',
+            author: {
+              id: 'u1'
+            }
+          },
+          {
+            pid: 'p3',
+            author: {
+              id: 'u1'
+            }
+          }
+        ]
+      },
+      topPosts: [
+        {
+          pid: 'p1'
+        },
+        {
+          pid: 'p2'
+        }
+      ]
+    }
   })
 })

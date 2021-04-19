@@ -1,6 +1,7 @@
 'use strict'
 
 const Fastify = require('fastify')
+const { GraphQLDirective } = require('graphql')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
 const { schema, resolvers } = require('./normal-setup')
@@ -13,14 +14,15 @@ app.register(mercurius, {
 })
 
 app.register(mercuriusAuth, {
-  authContext: (context) => {
+  authContext (context) {
     return {
       identity: context.reply.request.headers['x-user']
     }
   },
-  applyPolicy: async (authDirectiveAST, context, field) => {
+  async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity === 'admin'
-  }
+  },
+  authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
 })
 
 app.listen(3000)

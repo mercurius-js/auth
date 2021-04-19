@@ -45,7 +45,7 @@ test('registration - should error if mercurius is not loaded', async (t) => {
   }
 })
 
-test('registration - should error if authContext not specified', async (t) => {
+test('registration - should error if authContext not a function', async (t) => {
   t.plan(1)
 
   const app = Fastify()
@@ -56,7 +56,7 @@ test('registration - should error if authContext not specified', async (t) => {
   })
 
   try {
-    await app.register(mercuriusAuth, {})
+    await app.register(mercuriusAuth, { authContext: '' })
   } catch (error) {
     t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authContext is not a function.'))
   }
@@ -132,12 +132,12 @@ test('registration - should handle invalid string based auth Directive definitio
 
   try {
     await app.register(mercuriusAuth, {
-      authContext: (context) => {
+      authContext (context) {
         return {
           identity: context.reply.request.headers['x-user']
         }
       },
-      applyPolicy: async (authDirectiveAST, context, field) => {
+      async applyPolicy (authDirectiveAST, parent, args, context, info) {
         return context.auth.identity === 'admin'
       },
       authDirective: 'invalid'

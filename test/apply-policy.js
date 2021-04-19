@@ -3,7 +3,7 @@
 const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
-const { GraphQLDirective } = require('graphql')
+const { GraphQLDirective, GraphQLSchema } = require('graphql')
 const mercuriusAuth = require('..')
 
 test('apply policy - should provide authDirectiveAST', async (t) => {
@@ -39,12 +39,12 @@ test('apply policy - should provide authDirectiveAST', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext: (context) => {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       t.equal(authDirectiveAST.kind, 'Directive')
       t.equal(authDirectiveAST.name.value, 'auth')
       t.same(authDirectiveAST.arguments, [])
@@ -106,12 +106,12 @@ test('apply policy - should provide auth on context', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext: (context) => {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       t.same(context.auth, { identity: 'ADMIN' })
       return true
     },
@@ -138,7 +138,80 @@ test('apply policy - should provide auth on context', async (t) => {
   })
 })
 
-test('apply policy - should provide field', async (t) => {
+test('apply policy - should have access to parent', async (t) => {
+  t.plan(2)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  const schema = `
+  directive @auth on OBJECT | FIELD_DEFINITION
+
+  type Message {
+    title: String!
+    private: String @auth
+  }
+
+  type Query {
+    messages: [Message!]!
+  }
+`
+
+  const resolvers = {
+    Query: {
+      messages: () => [
+        {
+          title: 'one',
+          private: 'private one'
+        }
+      ]
+    }
+  }
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  app.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      t.same(parent, { title: 'one', private: 'private one' })
+      return true
+    },
+    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+  })
+
+  const query = `query {
+    messages {
+      title
+      private
+    }
+  }`
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-User': 'ADMIN' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(response.body), {
+    data: {
+      messages: [
+        {
+          title: 'one',
+          private: 'private one'
+        }
+      ]
+    }
+  })
+})
+
+test('apply policy - should have access to args', async (t) => {
   t.plan(2)
 
   const app = Fastify()
@@ -171,13 +244,13 @@ test('apply policy - should provide field', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext: (context) => {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
-      t.equal(field.name, 'add')
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      t.same(args, { x: 2, y: 2 })
       return true
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -203,26 +276,17 @@ test('apply policy - should provide field', async (t) => {
   })
 })
 
-test('apply policy - should access the field AST definition', async (t) => {
-  t.plan(1)
+test('apply policy - should have access to info', async (t) => {
+  t.plan(4)
 
   const app = Fastify()
   t.teardown(app.close.bind(app))
 
   const schema = `
-  directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
-
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
+  directive @auth on OBJECT | FIELD_DEFINITION
 
   type Query {
-    add(x: Int, y: Int): Int @auth(requires: ADMIN)
+    add(x: Int, y: Int): Int @auth
     subtract(x: Int, y: Int): Int
   }
 `
@@ -245,14 +309,16 @@ test('apply policy - should access the field AST definition', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext: (context) => {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
-      const requiredRole = authDirectiveAST.arguments[0].value.value
-      return context.auth.identity === requiredRole
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      t.equal(info.fieldName, 'add')
+      t.type(info.schema, GraphQLSchema)
+      t.same(info.path, { prev: undefined, key: 'four', typename: 'Query' })
+      return true
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
   })

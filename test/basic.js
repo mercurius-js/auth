@@ -21,14 +21,14 @@ const schema = `
   type Message {
     title: String!
     public: String!
-    private: String! @auth(requires: ADMIN)
+    private: String @auth(requires: ADMIN)
   }
 
   type Query {
     add(x: Int, y: Int): Int @auth(requires: ADMIN)
     subtract(x: Int, y: Int): Int
     messages: [Message!]!
-    adminMessages: [Message!]! @auth(requires: ADMIN)
+    adminMessages: [Message!] @auth(requires: ADMIN)
   }
 `
 
@@ -84,12 +84,12 @@ test('basic - should protect the schema and not affect queries when everything i
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext: (context) => {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -162,12 +162,12 @@ test('basic - should protect the schema and error accordingly', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext: (context) => {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -216,10 +216,11 @@ test('basic - should protect the schema and error accordingly', async (t) => {
       adminMessages: null
     },
     errors: [
-      { message: 'auth error', locations: [{ line: 2, column: 3 }], path: ['four'] },
-      { message: 'auth error', locations: [{ line: 3, column: 3 }], path: ['six'] },
-      { message: 'auth error', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
-      { message: 'auth error', locations: [{ line: 8, column: 5 }], path: ['messages', 'private'] }
+      { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'Failed auth policy check on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
     ]
   })
 })
@@ -273,12 +274,12 @@ test('basic - should work alongside existing directives', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext: (context) => {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -298,8 +299,8 @@ test('basic - should work alongside existing directives', async (t) => {
       subtract: 0
     },
     errors: [
-      { message: 'auth error', locations: [{ line: 2, column: 3 }], path: ['four'] },
-      { message: 'auth error', locations: [{ line: 3, column: 3 }], path: ['six'] }
+      { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] }
     ]
   })
 })
@@ -320,8 +321,8 @@ test('basic - should handle when no fields within a type are allowed', async (t)
   }
 
   type Message {
-    title: String! @auth(requires: ADMIN)
-    private: String! @auth(requires: ADMIN)
+    title: String @auth(requires: ADMIN)
+    private: String @auth(requires: ADMIN)
   }
 
   type Query {
@@ -374,12 +375,12 @@ test('basic - should handle when no fields within a type are allowed', async (t)
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext: (context) => {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
@@ -397,13 +398,24 @@ test('basic - should handle when no fields within a type are allowed', async (t)
       four: null,
       six: null,
       subtract: 0,
-      messages: null
+      messages: [
+        {
+          title: null,
+          private: null
+        },
+        {
+          title: null,
+          private: null
+        }
+      ]
     },
     errors: [
-      { message: 'auth error', locations: [{ line: 2, column: 3 }], path: ['four'] },
-      { message: 'auth error', locations: [{ line: 3, column: 3 }], path: ['six'] },
-      { message: 'auth error', locations: [{ line: 6, column: 5 }], path: ['messages', 'title'] },
-      { message: 'auth error', locations: [{ line: 7, column: 5 }], path: ['messages', 'private'] }
+      { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 5 }], path: ['messages', 0, 'title'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 5 }], path: ['messages', 0, 'private'] },
+      { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 5 }], path: ['messages', 1, 'title'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 5 }], path: ['messages', 1, 'private'] }
     ]
   })
 })
@@ -423,12 +435,12 @@ test('basic - should support string based auth Directive definitions', async (t)
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext: (context) => {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    applyPolicy: async (authDirectiveAST, context, field) => {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective
@@ -477,10 +489,246 @@ test('basic - should support string based auth Directive definitions', async (t)
       adminMessages: null
     },
     errors: [
-      { message: 'auth error', locations: [{ line: 2, column: 3 }], path: ['four'] },
-      { message: 'auth error', locations: [{ line: 3, column: 3 }], path: ['six'] },
-      { message: 'auth error', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
-      { message: 'auth error', locations: [{ line: 8, column: 5 }], path: ['messages', 'private'] }
+      { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'Failed auth policy check on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
     ]
+  })
+})
+
+test('basic - should handle custom errors thrown in applyPolicy', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  app.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      if (context.auth.identity !== 'admin') {
+        throw new Error(`custom auth error on ${info.fieldName}`)
+      }
+      return true
+    },
+    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+  })
+
+  const query = `query {
+  four: add(x: 2, y: 2)
+  six: add(x: 3, y: 3)
+  subtract(x: 3, y: 3)
+  messages {
+    title
+    public
+    private
+  }
+  adminMessages {
+    title
+    public
+    private
+  }
+}`
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-User': 'user' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(response.body), {
+    data: {
+      four: null,
+      six: null,
+      subtract: 0,
+      messages: [
+        {
+          title: 'one',
+          public: 'public one',
+          private: null
+        },
+        {
+          title: 'two',
+          public: 'public two',
+          private: null
+        }
+      ],
+      adminMessages: null
+    },
+    errors: [
+      { message: 'custom auth error on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'custom auth error on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'custom auth error on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
+    ]
+  })
+})
+
+test('basic - should handle custom errors returned in applyPolicy', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  app.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      if (context.auth.identity !== 'admin') {
+        return new Error(`custom auth error on ${info.fieldName}`)
+      }
+      return true
+    },
+    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+  })
+
+  const query = `query {
+  four: add(x: 2, y: 2)
+  six: add(x: 3, y: 3)
+  subtract(x: 3, y: 3)
+  messages {
+    title
+    public
+    private
+  }
+  adminMessages {
+    title
+    public
+    private
+  }
+}`
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-User': 'user' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(response.body), {
+    data: {
+      four: null,
+      six: null,
+      subtract: 0,
+      messages: [
+        {
+          title: 'one',
+          public: 'public one',
+          private: null
+        },
+        {
+          title: 'two',
+          public: 'public two',
+          private: null
+        }
+      ],
+      adminMessages: null
+    },
+    errors: [
+      { message: 'custom auth error on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'custom auth error on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'custom auth error on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
+    ]
+  })
+})
+
+test('basic - should handle when auth context is not defined', async (t) => {
+  t.plan(3)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  await app.register(mercuriusAuth, {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      return context.other.identity === 'admin'
+    },
+    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+  })
+
+  app.graphql.addHook('preExecution', async (schema, document, context) => {
+    context.other = {
+      identity: context.reply.request.headers['x-user']
+    }
+    t.type(context.auth, 'undefined')
+    t.ok('called')
+  })
+
+  const query = `query {
+  four: add(x: 2, y: 2)
+  six: add(x: 3, y: 3)
+  subtract(x: 3, y: 3)
+  messages {
+    title
+    public
+    private
+  }
+  adminMessages {
+    title
+    public
+    private
+  }
+}`
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-User': 'admin' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(response.body), {
+    data: {
+      four: 4,
+      six: 6,
+      subtract: 0,
+      messages: [
+        {
+          title: 'one',
+          public: 'public one',
+          private: 'private one'
+        },
+        {
+          title: 'two',
+          public: 'public two',
+          private: 'private two'
+        }
+      ],
+      adminMessages: [
+        {
+          title: 'admin one',
+          public: 'admin public one',
+          private: 'admin private one'
+        },
+        {
+          title: 'admin two',
+          public: 'admin public two',
+          private: 'admin private two'
+        }
+      ]
+    }
   })
 })
