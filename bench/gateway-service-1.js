@@ -53,7 +53,9 @@ const resolvers = {
 app.register(mercurius, {
   schema,
   resolvers,
-  federationMetadata: true
+  federationMetadata: true,
+  graphiql: false,
+  jit: 1
 })
 
 app.listen(3001)

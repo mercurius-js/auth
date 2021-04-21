@@ -8,7 +8,9 @@ const app = Fastify()
 
 app.register(mercurius, {
   schema,
-  resolvers
+  resolvers,
+  graphiql: false,
+  jit: 1
 })
 
 app.listen(3000)

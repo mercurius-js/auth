@@ -16,7 +16,9 @@ app.register(mercurius, {
       name: 'post',
       url: 'http://localhost:3002/graphql'
     }]
-  }
+  },
+  graphiql: false,
+  jit: 1
 })
 
 app.register(mercuriusAuth, {
