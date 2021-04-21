@@ -20,6 +20,11 @@ Features:
 - [Examples](#examples)
 - [Benchmarks](#benchmarks)
 - [API](docs/api/options.md)
+- [Auth Context](docs/auth-context.md)
+- [Apply Policy](docs/apply-policy.md)
+- [Auth Directive](docs/auth-directive.md)
+- [Errors](docs/errors.md)
+- [Federation](docs/federation.md)
 
 ## Install
 
