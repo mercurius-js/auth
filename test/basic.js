@@ -428,7 +428,31 @@ test('basic - should support string based auth Directive definitions', async (t)
 
   const authDirective = `directive @auth(
     requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION`
+  ) on OBJECT | FIELD_DEFINITION
+  
+  enum Role {
+    ADMIN
+    REVIEWER
+    USER
+    UNKNOWN
+  }`
+
+  const schema = `
+    ${authDirective}
+  
+    type Message {
+      title: String!
+      public: String!
+      private: String @auth(requires: ADMIN)
+    }
+  
+    type Query {
+      add(x: Int, y: Int): Int @auth(requires: ADMIN)
+      subtract(x: Int, y: Int): Int
+      messages: [Message!]!
+      adminMessages: [Message!] @auth(requires: ADMIN)
+    }
+  `
 
   app.register(mercurius, {
     schema,
