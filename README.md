@@ -13,6 +13,14 @@ Features:
 - Can define custom errors
 - GraphQL spec compliant
 
+## Docs
+
+- [Install](#install)
+- [Quick Start](#quick-start)
+- [Examples](#examples)
+- [Benchmarks](#benchmarks)
+- [API](docs/api/options.md)
+
 ## Install
 
 ```bash
@@ -44,13 +52,6 @@ enum Role {
 const schema = `
   ${authDirective}
 
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
-
   type Query {
     add(x: Int, y: Int): Int @auth(requires: USER)
   }
@@ -81,6 +82,10 @@ app.register(mercuriusAuth, {
 
 app.listen(3000)
 ```
+
+## Examples
+
+Check [GitHub repo](https://github.com/mercurius-js/auth/tree/master/examples) for more examples.
 
 ## Benchmarks
 

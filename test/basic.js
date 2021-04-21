@@ -756,3 +756,126 @@ test('basic - should handle when auth context is not defined', async (t) => {
     }
   })
 })
+
+test('basic - should support jit', async (t) => {
+  t.plan(2)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers,
+    jit: 1
+  })
+  app.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      return context.auth.identity === 'admin'
+    },
+    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+  })
+
+  const query = `query {
+  four: add(x: 2, y: 2)
+  six: add(x: 3, y: 3)
+  subtract(x: 3, y: 3)
+  messages {
+    title
+    public
+    private
+  }
+  adminMessages {
+    title
+    public
+    private
+  }
+}`
+
+  {
+    const response = await app.inject({
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-User': 'admin' },
+      url: '/graphql',
+      body: JSON.stringify({ query })
+    })
+
+    t.same(JSON.parse(response.body), {
+      data: {
+        four: 4,
+        six: 6,
+        subtract: 0,
+        messages: [
+          {
+            title: 'one',
+            public: 'public one',
+            private: 'private one'
+          },
+          {
+            title: 'two',
+            public: 'public two',
+            private: 'private two'
+          }
+        ],
+        adminMessages: [
+          {
+            title: 'admin one',
+            public: 'admin public one',
+            private: 'admin private one'
+          },
+          {
+            title: 'admin two',
+            public: 'admin public two',
+            private: 'admin private two'
+          }
+        ]
+      }
+    })
+  }
+
+  // Trigger JIT compilation
+  {
+    const response = await app.inject({
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-User': 'admin' },
+      url: '/graphql',
+      body: JSON.stringify({ query })
+    })
+
+    t.same(JSON.parse(response.body), {
+      data: {
+        four: 4,
+        six: 6,
+        subtract: 0,
+        messages: [
+          {
+            title: 'one',
+            public: 'public one',
+            private: 'private one'
+          },
+          {
+            title: 'two',
+            public: 'public two',
+            private: 'private two'
+          }
+        ],
+        adminMessages: [
+          {
+            title: 'admin one',
+            public: 'admin public one',
+            private: 'admin private one'
+          },
+          {
+            title: 'admin two',
+            public: 'admin public two',
+            private: 'admin private two'
+          }
+        ]
+      }
+    })
+  }
+})
