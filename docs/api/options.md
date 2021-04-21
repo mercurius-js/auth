@@ -6,14 +6,13 @@
 
 **mercurius-auth** supports the following options:
 
-* **authContext** `(context: MercuriusContext) => object | Promise<object>` (optional) - a function that assigns the returned data to `MercuriusContext.auth` for use in the `applyPolicy` function.
-<!-- TODO: check these types -->
-* **applyPolicy** `(authDirectiveAST: DocumentNode, parent: object, args: object, info: GraphQLInfo) => Promise<true | Error>` - the policy to run when an auth directive protected field is selected by the query.
-* **authDirective** `string | GraphQLDirective` - the directive that the Mercurius auth plugin to look with within the GraphQL schema.
+* **applyPolicy** `(authDirectiveAST: DirectiveNode, parent: object, args: Record<string, any>, context: MercuriusContext, info: GraphQLResolveInfo) => Promise<boolean | Error>` - the policy promise to run when an auth directive protected field is selected by the query. This must return `true` in order to pass the check and allow access to the protected field.
+* **authDirective** `string | GraphQLDirective` - the directive that the Mercurius auth plugin will look for within the GraphQL schema in order to identify protected fields.
+* **authContext** `(context: MercuriusContext) => object | Promise<object>` (optional) - assigns the returned data to `MercuriusContext.auth` for use in the `applyPolicy` function. This runs within a [`preExecution`](https://mercurius.dev/#/docs/hooks?id=preexecution) Mercurius GraphQL request hook.
 
 ## Registration
 
-The plugin must be registered **after** Mercurius is registered:
+The plugin must be registered **after** Mercurius is registered.
 
 ```js
 'use strict'

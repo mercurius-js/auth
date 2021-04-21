@@ -6,12 +6,12 @@ Mercurius Auth is a plugin for [Mercurius](https://mercurius.dev) that adds conf
 
 Features:
 
-- Define auth directives on fields anywhere in your schema and this plugin will apply custom policies against these protected fields on a request
-- Works in both normal and gateway mode
-- Build up an auth context to load identities onto the context before policies are applied
-- In addition to the matching auth directive, auth policies have access to the same GraphQL information that any GraphQL resolver has access to
-- Can define custom errors
-- GraphQL spec compliant
+- Define auth directives on fields anywhere in your schema and this plugin will apply custom policies against these protected fields when a GraphQL request is made.
+- Works in both normal and gateway mode.
+- In addition to the matching auth directive, auth policies have access to the same GraphQL information that any GraphQL resolver has access to.
+- Build up an auth context to load identities onto the context before policies are applied.
+- Define custom errors.
+- GraphQL spec compliant.
 
 ## Docs
 
