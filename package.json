@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/mercurius-js/auth",
   "devDependencies": {
+    "@sinonjs/fake-timers": "^7.0.5",
     "autocannon": "^7.0.5",
     "concurrently": "^6.0.2",
     "fastify": "^3.0.2",
