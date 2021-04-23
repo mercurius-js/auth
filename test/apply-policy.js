@@ -3,8 +3,10 @@
 const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
-const { GraphQLDirective, GraphQLSchema } = require('graphql')
+const { GraphQLSchema } = require('graphql')
 const mercuriusAuth = require('..')
+
+const authDirective = 'directive @auth on OBJECT | FIELD_DEFINITION'
 
 test('apply policy - should provide authDirectiveAST', async (t) => {
   t.plan(4)
@@ -13,7 +15,7 @@ test('apply policy - should provide authDirectiveAST', async (t) => {
   t.teardown(app.close.bind(app))
 
   const schema = `
-  directive @auth on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   type Query {
     add(x: Int, y: Int): Int @auth
@@ -50,7 +52,7 @@ test('apply policy - should provide authDirectiveAST', async (t) => {
       t.same(authDirectiveAST.arguments, [])
       return true
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {
@@ -80,7 +82,7 @@ test('apply policy - should provide auth on context', async (t) => {
   t.teardown(app.close.bind(app))
 
   const schema = `
-  directive @auth on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   type Query {
     add(x: Int, y: Int): Int @auth
@@ -115,7 +117,7 @@ test('apply policy - should provide auth on context', async (t) => {
       t.same(context.auth, { identity: 'ADMIN' })
       return true
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {
@@ -145,7 +147,7 @@ test('apply policy - should have access to parent', async (t) => {
   t.teardown(app.close.bind(app))
 
   const schema = `
-  directive @auth on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   type Message {
     title: String!
@@ -182,7 +184,7 @@ test('apply policy - should have access to parent', async (t) => {
       t.same(parent, { title: 'one', private: 'private one' })
       return true
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {
@@ -218,7 +220,7 @@ test('apply policy - should have access to args', async (t) => {
   t.teardown(app.close.bind(app))
 
   const schema = `
-  directive @auth on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   type Query {
     add(x: Int, y: Int): Int @auth
@@ -253,7 +255,7 @@ test('apply policy - should have access to args', async (t) => {
       t.same(args, { x: 2, y: 2 })
       return true
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {
@@ -283,7 +285,7 @@ test('apply policy - should have access to info', async (t) => {
   t.teardown(app.close.bind(app))
 
   const schema = `
-  directive @auth on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   type Query {
     add(x: Int, y: Int): Int @auth
@@ -320,7 +322,7 @@ test('apply policy - should have access to info', async (t) => {
       t.same(info.path, { prev: undefined, key: 'four', typename: 'Query' })
       return true
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {

@@ -4,7 +4,6 @@ const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
-const { GraphQLDirective } = require('graphql')
 
 async function createTestService (t, schema, resolvers = {}) {
   const service = Fastify()
@@ -55,21 +54,23 @@ const posts = {
   }
 }
 
-async function createTestGatewayServer (t, authOpts) {
-  // User service
-  const userServiceSchema = `
-  directive @auth(
+const authDirective = `directive @auth(
     requires: Role = ADMIN,
   ) on OBJECT | FIELD_DEFINITION
-
-  directive @notUsed on OBJECT | FIELD_DEFINITION
-
+  
   enum Role {
     ADMIN
     REVIEWER
     USER
     UNKNOWN
-  }
+  }`
+
+async function createTestGatewayServer (t, authOpts) {
+  // User service
+  const userServiceSchema = `
+  ${authDirective}
+
+  directive @notUsed on OBJECT | FIELD_DEFINITION
 
   type Query @extends {
     me: User
@@ -95,18 +96,9 @@ async function createTestGatewayServer (t, authOpts) {
 
   // Post service
   const postServiceSchema = `
-  directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   directive @notUsed on OBJECT | FIELD_DEFINITION
-
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
 
   type Post @key(fields: "pid") {
     pid: ID!
@@ -161,6 +153,7 @@ async function createTestGatewayServer (t, authOpts) {
       }]
     }
   })
+
   gateway.register(mercuriusAuth, authOpts || {
     authContext (context) {
       return {
@@ -170,7 +163,7 @@ async function createTestGatewayServer (t, authOpts) {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
   return gateway
 }
@@ -307,7 +300,7 @@ test('gateway - should handle custom errors', async (t) => {
       }
       return true
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {
@@ -372,7 +365,7 @@ test('gateway - should handle when auth context is not defined', async (t) => {
       }
       return true
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   app.graphql.addHook('preGatewayExecution', async (schema, document, context, service) => {

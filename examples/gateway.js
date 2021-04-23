@@ -1,9 +1,8 @@
 'use strict'
 
 const Fastify = require('fastify')
-const { GraphQLDirective } = require('graphql')
 const mercurius = require('mercurius')
-const mercuriusAuth = require('mercurius-auth')
+const mercuriusAuth = require('..')
 
 async function createService (schema, resolvers = {}) {
   const service = Fastify()
@@ -54,21 +53,23 @@ const posts = {
   }
 }
 
+const authDirective = `directive @auth(
+  requires: Role = ADMIN,
+) on OBJECT | FIELD_DEFINITION
+
+enum Role {
+  ADMIN
+  REVIEWER
+  USER
+  UNKNOWN
+}`
+
 async function start (authOpts) {
   // User service
   const userServiceSchema = `
-  directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   directive @notUsed on OBJECT | FIELD_DEFINITION
-
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
 
   type Query @extends {
     me: User
@@ -94,18 +95,9 @@ async function start (authOpts) {
 
   // Post service
   const postServiceSchema = `
-  directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   directive @notUsed on OBJECT | FIELD_DEFINITION
-
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
 
   type Post @key(fields: "pid") {
     pid: ID!
@@ -166,7 +158,7 @@ async function start (authOpts) {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   await gateway.listen(3000)

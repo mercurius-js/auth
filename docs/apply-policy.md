@@ -6,23 +6,24 @@ When called, the `applyPolicy` Promise provides the matching authDirective as a 
 'use strict'
 
 const Fastify = require('fastify')
-const { GraphQLDirective } = require('graphql')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('mercurius-auth')
 
 const app = Fastify()
 
-const schema = `
-  directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
+const authDirective = `directive @auth(
+  requires: Role = ADMIN,
+) on OBJECT | FIELD_DEFINITION
 
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
+enum Role {
+  ADMIN
+  REVIEWER
+  USER
+  UNKNOWN
+}`
+
+const schema = `
+  ${authDirective}
 
   type Query {
     add(x: Int, y: Int): Int @auth(requires: USER)
@@ -53,7 +54,7 @@ app.register(mercuriusAuth, {
     }
     return true
   },
-  authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+  authDirective
 })
 
 app.listen(3000)

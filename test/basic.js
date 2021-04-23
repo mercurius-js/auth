@@ -3,20 +3,21 @@
 const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
-const { GraphQLDirective } = require('graphql')
 const mercuriusAuth = require('..')
 
-const schema = `
-  directive @auth(
+const authDirective = `directive @auth(
     requires: Role = ADMIN,
   ) on OBJECT | FIELD_DEFINITION
-
+  
   enum Role {
     ADMIN
     REVIEWER
     USER
     UNKNOWN
-  }
+  }`
+
+const schema = `
+    ${authDirective}
 
   type Message {
     title: String!
@@ -92,7 +93,7 @@ test('basic - should protect the schema and not affect queries when everything i
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {
@@ -170,7 +171,7 @@ test('basic - should protect the schema and error accordingly', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {
@@ -229,18 +230,9 @@ test('basic - should work alongside existing directives', async (t) => {
   t.plan(1)
 
   const schema = `
-    directive @auth(
-      requires: Role = ADMIN,
-    ) on OBJECT | FIELD_DEFINITION
+    ${authDirective}
 
     directive @notUsed on OBJECT | FIELD_DEFINITION
-
-    enum Role {
-      ADMIN
-      REVIEWER
-      USER
-      UNKNOWN
-    }
 
     type Query {
       add(x: Int, y: Int): Int @auth(requires: ADMIN) @notUsed
@@ -282,7 +274,7 @@ test('basic - should work alongside existing directives', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const response = await app.inject({
@@ -309,16 +301,7 @@ test('basic - should handle when no fields within a type are allowed', async (t)
   t.plan(1)
 
   const schema = `
-  directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
-
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
+    ${authDirective}
 
   type Message {
     title: String @auth(requires: ADMIN)
@@ -383,7 +366,7 @@ test('basic - should handle when no fields within a type are allowed', async (t)
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const response = await app.inject({
@@ -420,108 +403,6 @@ test('basic - should handle when no fields within a type are allowed', async (t)
   })
 })
 
-test('basic - should support string based auth Directive definitions', async (t) => {
-  t.plan(1)
-
-  const app = Fastify()
-  t.teardown(app.close.bind(app))
-
-  const authDirective = `directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
-  
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }`
-
-  const schema = `
-    ${authDirective}
-  
-    type Message {
-      title: String!
-      public: String!
-      private: String @auth(requires: ADMIN)
-    }
-  
-    type Query {
-      add(x: Int, y: Int): Int @auth(requires: ADMIN)
-      subtract(x: Int, y: Int): Int
-      messages: [Message!]!
-      adminMessages: [Message!] @auth(requires: ADMIN)
-    }
-  `
-
-  app.register(mercurius, {
-    schema,
-    resolvers
-  })
-  app.register(mercuriusAuth, {
-    authContext (context) {
-      return {
-        identity: context.reply.request.headers['x-user']
-      }
-    },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      return context.auth.identity === 'admin'
-    },
-    authDirective
-  })
-
-  const query = `query {
-  four: add(x: 2, y: 2)
-  six: add(x: 3, y: 3)
-  subtract(x: 3, y: 3)
-  messages {
-    title
-    public
-    private
-  }
-  adminMessages {
-    title
-    public
-    private
-  }
-}`
-
-  const response = await app.inject({
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'X-User': 'user' },
-    url: '/graphql',
-    body: JSON.stringify({ query })
-  })
-
-  t.same(JSON.parse(response.body), {
-    data: {
-      four: null,
-      six: null,
-      subtract: 0,
-      messages: [
-        {
-          title: 'one',
-          public: 'public one',
-          private: null
-        },
-        {
-          title: 'two',
-          public: 'public two',
-          private: null
-        }
-      ],
-      adminMessages: null
-    },
-    errors: [
-      { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
-      { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
-      { message: 'Failed auth policy check on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
-      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
-      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
-    ]
-  })
-})
-
 test('basic - should handle custom errors thrown in applyPolicy', async (t) => {
   t.plan(1)
 
@@ -544,7 +425,7 @@ test('basic - should handle custom errors thrown in applyPolicy', async (t) => {
       }
       return true
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {
@@ -621,7 +502,7 @@ test('basic - should handle custom errors returned in applyPolicy', async (t) =>
       }
       return true
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {
@@ -690,7 +571,7 @@ test('basic - should handle when auth context is not defined', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.other.identity === 'admin'
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   app.graphql.addHook('preExecution', async (schema, document, context) => {
@@ -777,7 +658,7 @@ test('basic - should support jit', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   const query = `query {

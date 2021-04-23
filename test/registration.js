@@ -4,11 +4,15 @@ const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { AssertionError } = require('assert')
-const { GraphQLDirective, GraphQLError } = require('graphql')
+const { GraphQLError } = require('graphql')
 const mercuriusAuth = require('..')
 const { MER_AUTH_ERR_INVALID_OPTS } = require('../lib/errors')
 
+const authDirective = 'directive @auth on OBJECT | FIELD_DEFINITION'
+
 const schema = `
+  ${authDirective}
+
   type Query {
     add(x: Int, y: Int): Int
   }
@@ -58,7 +62,7 @@ test('registration - should error if authContext not a function', async (t) => {
   try {
     await app.register(mercuriusAuth, { authContext: '' })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authContext is not a function.'))
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authContext must be a function.'))
   }
 })
 
@@ -77,11 +81,11 @@ test('registration - should error if applyPolicy not specified', async (t) => {
       authContext: () => {}
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.applyPolicy is not a function.'))
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.applyPolicy must be a function.'))
   }
 })
 
-test('registration - should error if applyPolicy not specified', async (t) => {
+test('registration - should error if authDirective not specified', async (t) => {
   t.plan(1)
 
   const app = Fastify()
@@ -97,7 +101,7 @@ test('registration - should error if applyPolicy not specified', async (t) => {
       applyPolicy: () => {}
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authDirective is not a string or instance of GraphQLDirective.'))
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authDirective must be a string.'))
   }
 })
 
@@ -114,7 +118,7 @@ test('registration - should register the plugin', async (t) => {
   await app.register(mercuriusAuth, {
     authContext: () => {},
     applyPolicy: () => {},
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
   t.ok('mercurius auth plugin is registered')
 })

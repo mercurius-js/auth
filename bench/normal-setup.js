@@ -1,16 +1,18 @@
 'use strict'
 
-const schema = `
-  directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
+const authDirective = `directive @auth(
+  requires: Role = ADMIN,
+) on OBJECT | FIELD_DEFINITION
 
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
+enum Role {
+  ADMIN
+  REVIEWER
+  USER
+  UNKNOWN
+}`
+
+const schema = `
+  ${authDirective}
 
   type Message {
     title: String!
@@ -68,6 +70,7 @@ const resolvers = {
 }
 
 module.exports = {
+  authDirective,
   schema,
   resolvers
 }

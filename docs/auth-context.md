@@ -11,23 +11,22 @@ The auth context is used to load authentication data onto the `MercuriusContext`
 'use strict'
 
 const Fastify = require('fastify')
-const { GraphQLDirective } = require('graphql')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('mercurius-auth')
 
-const app = Fastify()
+const authDirective = `directive @auth(
+  requires: Role = ADMIN,
+) on OBJECT | FIELD_DEFINITION
+
+enum Role {
+  ADMIN
+  REVIEWER
+  USER
+  UNKNOWN
+}`
 
 const schema = `
-  directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
-
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
+  ${authDirective}
 
   type Query {
     add(x: Int, y: Int): Int @auth(requires: USER)
@@ -54,11 +53,10 @@ app.register(mercuriusAuth, {
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity === 'admin'
   },
-  authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+  authDirective
 })
 
 app.listen(3000)
-
 ```
 
 ## Usage without `authContext`
@@ -69,21 +67,22 @@ Using a custom `preExecution` hook instead of `authContext`.
 'use strict'
 
 const Fastify = require('fastify')
-const { GraphQLDirective } = require('graphql')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('mercurius-auth')
 
-const schema = `
-  directive @auth(
-    requires: Role = ADMIN,
-  ) on OBJECT | FIELD_DEFINITION
+const authDirective = `directive @auth(
+  requires: Role = ADMIN,
+) on OBJECT | FIELD_DEFINITION
 
-  enum Role {
-    ADMIN
-    REVIEWER
-    USER
-    UNKNOWN
-  }
+enum Role {
+  ADMIN
+  REVIEWER
+  USER
+  UNKNOWN
+}`
+
+const schema = `
+  ${authDirective}
 
   type Query {
     add(x: Int, y: Int): Int @auth(requires: USER)
@@ -108,7 +107,7 @@ async function start () {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.other.identity === 'admin'
     },
-    authDirective: new GraphQLDirective({ name: 'auth', locations: [] })
+    authDirective
   })
 
   app.graphql.addHook('preExecution', async (schema, document, context) => {

@@ -4,15 +4,16 @@ const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
-const { GraphQLDirective } = require('graphql')
 
 const orgMembers = {
   acme: ['alice'],
   other: ['alice', 'bob']
 }
 
+const authDirective = 'directive @orgAuth on OBJECT | FIELD_DEFINITION'
+
 const schema = `
-  directive @orgAuth on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   type Message {
     title: String!
@@ -74,8 +75,6 @@ async function applyPolicy (authDirectiveAST, parent, args, context, info) {
   }
   return false
 }
-
-const authDirective = new GraphQLDirective({ name: 'orgAuth', locations: [] })
 
 test('should be able to access the query to determine that users have sufficient access to run related operations', async (t) => {
   t.plan(1)
@@ -182,10 +181,12 @@ test('should support being registered multiple times', async (t) => {
   const app = Fastify()
   t.teardown(app.close.bind(app))
 
-  const schema = `
-  directive @auth1 on OBJECT | FIELD_DEFINITION
+  const authDirective1 = 'directive @auth1 on OBJECT | FIELD_DEFINITION'
+  const authDirective2 = 'directive @auth2 on OBJECT | FIELD_DEFINITION'
 
-  directive @auth2 on OBJECT | FIELD_DEFINITION
+  const schema = `
+  ${authDirective1}
+  ${authDirective2}
 
   enum Role {
     ADMIN
@@ -221,14 +222,14 @@ test('should support being registered multiple times', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity.includes('user')
     },
-    authDirective: new GraphQLDirective({ name: 'auth1', locations: [] })
+    authDirective: authDirective1
   })
 
   app.register(mercuriusAuth, {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'super-user'
     },
-    authDirective: new GraphQLDirective({ name: 'auth2', locations: [] })
+    authDirective: authDirective2
   })
 
   const query = `query {

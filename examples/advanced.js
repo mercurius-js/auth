@@ -1,9 +1,8 @@
 'use strict'
 
 const Fastify = require('fastify')
-const { GraphQLDirective } = require('graphql')
 const mercurius = require('mercurius')
-const mercuriusAuth = require('mercurius-auth')
+const mercuriusAuth = require('..')
 
 const app = Fastify()
 
@@ -12,8 +11,10 @@ const orgMembers = {
   other: ['alice', 'bob']
 }
 
+const authDirective = 'directive @orgAuth on OBJECT | FIELD_DEFINITION'
+
 const schema = `
-  directive @orgAuth on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   type Message {
     title: String!
@@ -80,7 +81,7 @@ app.register(mercuriusAuth, {
     }
     return false
   },
-  authDirective: new GraphQLDirective({ name: 'orgAuth', locations: [] })
+  authDirective
 })
 
 app.listen(3000)

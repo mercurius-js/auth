@@ -26,7 +26,6 @@ See the example below for more details:
 'use strict'
 
 const Fastify = require('fastify')
-const { GraphQLDirective } = require('graphql')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('mercurius-auth')
 
@@ -37,8 +36,10 @@ const orgMembers = {
   other: ['alice', 'bob']
 }
 
+const authDirective = 'directive @orgAuth on OBJECT | FIELD_DEFINITION'
+
 const schema = `
-  directive @orgAuth on OBJECT | FIELD_DEFINITION
+  ${authDirective}
 
   type Message {
     title: String!
@@ -105,7 +106,7 @@ app.register(mercuriusAuth, {
     }
     return false
   },
-  authDirective: new GraphQLDirective({ name: 'orgAuth', locations: [] })
+  authDirective
 })
 
 app.listen(3000)
@@ -119,16 +120,19 @@ Note, only the last `authContext` will be applied onto the context. If you want 
 'use strict'
 
 const Fastify = require('fastify')
-const { GraphQLDirective } = require('graphql')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('mercurius-auth')
 
 const app = Fastify()
 
-const schema = `
-  directive @auth1 on OBJECT | FIELD_DEFINITION
+const authDirective1 = 'directive @auth1 on OBJECT | FIELD_DEFINITION'
 
-  directive @auth2 on OBJECT | FIELD_DEFINITION
+const authDirective2 = 'directive @auth2 on OBJECT | FIELD_DEFINITION'
+
+const schema = `
+${authDirective1}
+
+${authDirective2}
 
   enum Role {
     ADMIN
@@ -164,14 +168,14 @@ app.register(mercuriusAuth, {
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity.includes('user')
   },
-  authDirective: new GraphQLDirective({ name: 'auth1', locations: [] })
+  authDirective: authDirective1
 })
 
 app.register(mercuriusAuth, {
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity === 'super-user'
   },
-  authDirective: new GraphQLDirective({ name: 'auth2', locations: [] })
+  authDirective: authDirective2
 })
 
 app.listen(3000)

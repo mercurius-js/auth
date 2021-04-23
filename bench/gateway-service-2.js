@@ -2,6 +2,7 @@
 
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
+const { authDirective } = require('./normal-setup')
 
 const app = Fastify()
 
@@ -33,16 +34,7 @@ const posts = {
 }
 
 const schema = `
-directive @auth(
-  requires: Role = ADMIN,
-) on OBJECT | FIELD_DEFINITION
-
-enum Role {
-  ADMIN
-  REVIEWER
-  USER
-  UNKNOWN
-}
+${authDirective}
 
 type Post @key(fields: "pid") {
   pid: ID!
