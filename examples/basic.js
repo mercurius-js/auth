@@ -6,19 +6,17 @@ const mercuriusAuth = require('..')
 
 const app = Fastify()
 
-const authDirective = `directive @auth(
-  requires: Role = ADMIN,
-) on OBJECT | FIELD_DEFINITION
-
-enum Role {
-  ADMIN
-  REVIEWER
-  USER
-  UNKNOWN
-}`
-
 const schema = `
-  ${authDirective}
+  directive @auth(
+    requires: Role = ADMIN,
+  ) on OBJECT | FIELD_DEFINITION
+
+  enum Role {
+    ADMIN
+    REVIEWER
+    USER
+    UNKNOWN
+  }
 
   type Query {
     add(x: Int, y: Int): Int @auth(requires: USER)
@@ -45,7 +43,7 @@ app.register(mercuriusAuth, {
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity === 'admin'
   },
-  authDirective
+  authDirective: 'auth'
 })
 
 app.listen(3000)

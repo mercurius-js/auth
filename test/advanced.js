@@ -10,10 +10,8 @@ const orgMembers = {
   other: ['alice', 'bob']
 }
 
-const authDirective = 'directive @orgAuth on OBJECT | FIELD_DEFINITION'
-
 const schema = `
-  ${authDirective}
+  directive @orgAuth on OBJECT | FIELD_DEFINITION
 
   type Message {
     title: String!
@@ -90,7 +88,7 @@ test('should be able to access the query to determine that users have sufficient
   app.register(mercuriusAuth, {
     authContext,
     applyPolicy,
-    authDirective
+    authDirective: 'orgAuth'
   })
 
   const query = `query {
@@ -137,7 +135,7 @@ test('should be able to access the query to determine that users have insufficie
   app.register(mercuriusAuth, {
     authContext,
     applyPolicy,
-    authDirective
+    authDirective: 'orgAuth'
   })
 
   const query = `query {
@@ -181,12 +179,9 @@ test('should support being registered multiple times', async (t) => {
   const app = Fastify()
   t.teardown(app.close.bind(app))
 
-  const authDirective1 = 'directive @auth1 on OBJECT | FIELD_DEFINITION'
-  const authDirective2 = 'directive @auth2 on OBJECT | FIELD_DEFINITION'
-
   const schema = `
-  ${authDirective1}
-  ${authDirective2}
+  directive @auth1 on OBJECT | FIELD_DEFINITION
+  directive @auth2 on OBJECT | FIELD_DEFINITION
 
   enum Role {
     ADMIN
@@ -222,14 +217,14 @@ test('should support being registered multiple times', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity.includes('user')
     },
-    authDirective: authDirective1
+    authDirective: 'auth1'
   })
 
   app.register(mercuriusAuth, {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'super-user'
     },
-    authDirective: authDirective2
+    authDirective: 'auth2'
   })
 
   const query = `query {

@@ -58,21 +58,19 @@ const posts = {
   }
 }
 
-const authDirective = `directive @auth(
-  requires: Role = ADMIN,
-) on OBJECT | FIELD_DEFINITION
-
-enum Role {
-  ADMIN
-  REVIEWER
-  USER
-  UNKNOWN
-}`
-
 async function start (authOpts) {
   // User service
   const userServiceSchema = `
-  ${authDirective}
+  directive @auth(
+    requires: Role = ADMIN,
+  ) on OBJECT | FIELD_DEFINITION
+
+  enum Role {
+    ADMIN
+    REVIEWER
+    USER
+    UNKNOWN
+  }
 
   directive @notUsed on OBJECT | FIELD_DEFINITION
 
@@ -100,7 +98,16 @@ async function start (authOpts) {
 
   // Post service
   const postServiceSchema = `
-  ${authDirective}
+  directive @auth(
+    requires: Role = ADMIN,
+  ) on OBJECT | FIELD_DEFINITION
+
+  enum Role {
+    ADMIN
+    REVIEWER
+    USER
+    UNKNOWN
+  }
 
   directive @notUsed on OBJECT | FIELD_DEFINITION
 
@@ -163,7 +170,7 @@ async function start (authOpts) {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   await gateway.listen(3000)

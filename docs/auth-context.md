@@ -14,19 +14,17 @@ const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('mercurius-auth')
 
-const authDirective = `directive @auth(
-  requires: Role = ADMIN,
-) on OBJECT | FIELD_DEFINITION
-
-enum Role {
-  ADMIN
-  REVIEWER
-  USER
-  UNKNOWN
-}`
-
 const schema = `
-  ${authDirective}
+  directive @auth(
+    requires: Role = ADMIN,
+  ) on OBJECT | FIELD_DEFINITION
+
+  enum Role {
+    ADMIN
+    REVIEWER
+    USER
+    UNKNOWN
+  }
 
   type Query {
     add(x: Int, y: Int): Int @auth(requires: USER)
@@ -53,7 +51,7 @@ app.register(mercuriusAuth, {
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity === 'admin'
   },
-  authDirective
+  authDirective: 'auth'
 })
 
 app.listen(3000)
@@ -70,19 +68,17 @@ const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('mercurius-auth')
 
-const authDirective = `directive @auth(
-  requires: Role = ADMIN,
-) on OBJECT | FIELD_DEFINITION
-
-enum Role {
-  ADMIN
-  REVIEWER
-  USER
-  UNKNOWN
-}`
-
 const schema = `
-  ${authDirective}
+  directive @auth(
+    requires: Role = ADMIN,
+  ) on OBJECT | FIELD_DEFINITION
+
+  enum Role {
+    ADMIN
+    REVIEWER
+    USER
+    UNKNOWN
+  }
 
   type Query {
     add(x: Int, y: Int): Int @auth(requires: USER)
@@ -107,7 +103,7 @@ async function start () {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.other.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   app.graphql.addHook('preExecution', async (schema, document, context) => {

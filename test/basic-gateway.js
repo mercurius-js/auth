@@ -54,7 +54,10 @@ const posts = {
   }
 }
 
-const authDirective = `directive @auth(
+async function createTestGatewayServer (t, authOpts) {
+  // User service
+  const userServiceSchema = `
+  directive @auth(
     requires: Role = ADMIN,
   ) on OBJECT | FIELD_DEFINITION
   
@@ -63,12 +66,7 @@ const authDirective = `directive @auth(
     REVIEWER
     USER
     UNKNOWN
-  }`
-
-async function createTestGatewayServer (t, authOpts) {
-  // User service
-  const userServiceSchema = `
-  ${authDirective}
+  }
 
   directive @notUsed on OBJECT | FIELD_DEFINITION
 
@@ -96,7 +94,16 @@ async function createTestGatewayServer (t, authOpts) {
 
   // Post service
   const postServiceSchema = `
-  ${authDirective}
+  directive @auth(
+    requires: Role = ADMIN,
+  ) on OBJECT | FIELD_DEFINITION
+  
+  enum Role {
+    ADMIN
+    REVIEWER
+    USER
+    UNKNOWN
+  }
 
   directive @notUsed on OBJECT | FIELD_DEFINITION
 
@@ -163,7 +170,7 @@ async function createTestGatewayServer (t, authOpts) {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
   return gateway
 }
@@ -300,7 +307,7 @@ test('gateway - should handle custom errors', async (t) => {
       }
       return true
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   const query = `query {
@@ -365,7 +372,7 @@ test('gateway - should handle when auth context is not defined', async (t) => {
       }
       return true
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   app.graphql.addHook('preGatewayExecution', async (schema, document, context, service) => {

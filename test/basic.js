@@ -5,19 +5,17 @@ const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
 
-const authDirective = `directive @auth(
+const schema = `
+  directive @auth(
     requires: Role = ADMIN,
   ) on OBJECT | FIELD_DEFINITION
-  
+
   enum Role {
     ADMIN
     REVIEWER
     USER
     UNKNOWN
-  }`
-
-const schema = `
-    ${authDirective}
+  }
 
   type Message {
     title: String!
@@ -93,7 +91,7 @@ test('basic - should protect the schema and not affect queries when everything i
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   const query = `query {
@@ -171,7 +169,7 @@ test('basic - should protect the schema and error accordingly', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   const query = `query {
@@ -230,7 +228,16 @@ test('basic - should work alongside existing directives', async (t) => {
   t.plan(1)
 
   const schema = `
-    ${authDirective}
+    directive @auth(
+      requires: Role = ADMIN,
+    ) on OBJECT | FIELD_DEFINITION
+
+    enum Role {
+      ADMIN
+      REVIEWER
+      USER
+      UNKNOWN
+    }
 
     directive @notUsed on OBJECT | FIELD_DEFINITION
 
@@ -274,7 +281,7 @@ test('basic - should work alongside existing directives', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   const response = await app.inject({
@@ -301,7 +308,16 @@ test('basic - should handle when no fields within a type are allowed', async (t)
   t.plan(1)
 
   const schema = `
-    ${authDirective}
+  directive @auth(
+    requires: Role = ADMIN,
+  ) on OBJECT | FIELD_DEFINITION
+
+  enum Role {
+    ADMIN
+    REVIEWER
+    USER
+    UNKNOWN
+  }
 
   type Message {
     title: String @auth(requires: ADMIN)
@@ -366,7 +382,7 @@ test('basic - should handle when no fields within a type are allowed', async (t)
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   const response = await app.inject({
@@ -425,7 +441,7 @@ test('basic - should handle custom errors thrown in applyPolicy', async (t) => {
       }
       return true
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   const query = `query {
@@ -502,7 +518,7 @@ test('basic - should handle custom errors returned in applyPolicy', async (t) =>
       }
       return true
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   const query = `query {
@@ -571,7 +587,7 @@ test('basic - should handle when auth context is not defined', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.other.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   app.graphql.addHook('preExecution', async (schema, document, context) => {
@@ -658,7 +674,7 @@ test('basic - should support jit', async (t) => {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   const query = `query {

@@ -3,7 +3,7 @@
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
-const { schema, resolvers, authDirective } = require('./normal-setup')
+const { schema, resolvers } = require('./normal-setup')
 
 const app = Fastify()
 
@@ -23,7 +23,7 @@ app.register(mercuriusAuth, {
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity === 'admin'
   },
-  authDirective
+  authDirective: 'auth'
 })
 
 app.listen(3000)

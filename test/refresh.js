@@ -9,8 +9,6 @@ const mercuriusAuth = require('..')
 
 const immediate = promisify(setImmediate)
 
-const authDirective = 'directive @auth on OBJECT | FIELD_DEFINITION'
-
 test('polling interval with a new schema should trigger refresh of schema policy build', async (t) => {
   t.plan(4)
 
@@ -44,7 +42,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
 
   userService.register(mercurius, {
     schema: `
-      ${authDirective}
+      directive @auth on OBJECT | FIELD_DEFINITION
 
       extend type Query {
         me: User
@@ -85,7 +83,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
       t.ok('should be called')
       return context.auth.identity === 'admin'
     },
-    authDirective
+    authDirective: 'auth'
   })
 
   {
@@ -130,7 +128,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
 
   userService.graphql.replaceSchema(
     mercurius.buildFederationSchema(`
-      ${authDirective}
+      directive @auth on OBJECT | FIELD_DEFINITION
 
       extend type Query {
         me: User

@@ -36,10 +36,8 @@ const orgMembers = {
   other: ['alice', 'bob']
 }
 
-const authDirective = 'directive @orgAuth on OBJECT | FIELD_DEFINITION'
-
 const schema = `
-  ${authDirective}
+  directive @orgAuth on OBJECT | FIELD_DEFINITION
 
   type Message {
     title: String!
@@ -106,7 +104,7 @@ app.register(mercuriusAuth, {
     }
     return false
   },
-  authDirective
+  authDirective: 'auth'
 })
 
 app.listen(3000)
@@ -125,14 +123,10 @@ const mercuriusAuth = require('mercurius-auth')
 
 const app = Fastify()
 
-const authDirective1 = 'directive @auth1 on OBJECT | FIELD_DEFINITION'
-
-const authDirective2 = 'directive @auth2 on OBJECT | FIELD_DEFINITION'
-
 const schema = `
-${authDirective1}
+  directive @auth1 on OBJECT | FIELD_DEFINITION
 
-${authDirective2}
+  directive @auth2 on OBJECT | FIELD_DEFINITION
 
   enum Role {
     ADMIN
@@ -168,14 +162,14 @@ app.register(mercuriusAuth, {
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity.includes('user')
   },
-  authDirective: authDirective1
+  authDirective: 'auth1'
 })
 
 app.register(mercuriusAuth, {
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity === 'super-user'
   },
-  authDirective: authDirective2
+  authDirective: 'auth2'
 })
 
 app.listen(3000)

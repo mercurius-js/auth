@@ -11,10 +11,8 @@ const orgMembers = {
   other: ['alice', 'bob']
 }
 
-const authDirective = 'directive @orgAuth on OBJECT | FIELD_DEFINITION'
-
 const schema = `
-  ${authDirective}
+  directive @orgAuth on OBJECT | FIELD_DEFINITION
 
   type Message {
     title: String!
@@ -81,7 +79,7 @@ app.register(mercuriusAuth, {
     }
     return false
   },
-  authDirective
+  authDirective: 'orgAuth'
 })
 
 app.listen(3000)

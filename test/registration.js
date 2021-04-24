@@ -4,14 +4,11 @@ const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { AssertionError } = require('assert')
-const { GraphQLError } = require('graphql')
 const mercuriusAuth = require('..')
 const { MER_AUTH_ERR_INVALID_OPTS } = require('../lib/errors')
 
-const authDirective = 'directive @auth on OBJECT | FIELD_DEFINITION'
-
 const schema = `
-  ${authDirective}
+  directive @auth on OBJECT | FIELD_DEFINITION
 
   type Query {
     add(x: Int, y: Int): Int
@@ -118,35 +115,7 @@ test('registration - should register the plugin', async (t) => {
   await app.register(mercuriusAuth, {
     authContext: () => {},
     applyPolicy: () => {},
-    authDirective
+    authDirective: 'auth'
   })
   t.ok('mercurius auth plugin is registered')
-})
-
-test('registration - should handle invalid string based auth Directive definitions', async (t) => {
-  t.plan(1)
-
-  const app = Fastify()
-  t.teardown(app.close.bind(app))
-
-  app.register(mercurius, {
-    schema,
-    resolvers
-  })
-
-  try {
-    await app.register(mercuriusAuth, {
-      authContext (context) {
-        return {
-          identity: context.reply.request.headers['x-user']
-        }
-      },
-      async applyPolicy (authDirectiveAST, parent, args, context, info) {
-        return context.auth.identity === 'admin'
-      },
-      authDirective: 'invalid'
-    })
-  } catch (error) {
-    t.same(error, new GraphQLError('Syntax Error: Unexpected Name "invalid".', undefined, 'invalid', [0]))
-  }
 })
