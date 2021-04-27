@@ -1,19 +1,27 @@
 'use strict'
 
 const fp = require('fastify-plugin')
-
-function validateOpts (opts) {
-  if (typeof opts.authContext !== 'function') {
-    throw new Error('opts.authContext is not a function.')
-  }
-  if (typeof opts.applyPolicy !== 'function') {
-    throw new Error('opts.applyPolicy is not a function.')
-  }
-}
+const Auth = require('./lib/auth')
+const { validateOpts } = require('./lib/validation')
 
 const plugin = fp(
   async function (app, opts) {
     validateOpts(opts)
+
+    // Start auth and register hooks
+    const auth = new Auth(opts)
+
+    // Override resolvers with auth handlers
+    auth.registerAuthHandlers(app.graphql.schema)
+
+    // Add hook to regenerate the resolvers when the schema is refreshed
+    app.graphql.addHook('onGatewayReplaceSchema', async (instance, schema) => {
+      auth.registerAuthHandlers(schema)
+    })
+
+    if (typeof opts.authContext !== 'undefined') {
+      app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
+    }
   },
   {
     name: 'mercurius-auth',
