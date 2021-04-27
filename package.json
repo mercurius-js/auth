@@ -15,6 +15,12 @@
     "url": "git+https://github.com/mercurius-js/auth.git"
   },
   "author": "Jonny Green <hello@jonnydgreen.com>",
+  "contributors": [
+    {
+      "name": "Matteo Collina",
+      "email": "hello@matteocollina.com"
+    }
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/mercurius-js/auth/issues"
