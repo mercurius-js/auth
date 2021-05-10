@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Mercurius Auth Plugin adds configurable Authentication and Authorization support to Mercurius.",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "unit": "tap --100 test/*.js",
     "cov": "tap --coverage-report=html -J test/*.js",
