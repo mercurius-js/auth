@@ -24,7 +24,7 @@ const resolvers = {
   }
 }
 
-test('registration - should error if mercurius is not loaded', async (t) => {
+test('registration - should error if mercurius is not loaded', async t => {
   t.plan(1)
 
   const app = Fastify()
@@ -46,7 +46,7 @@ test('registration - should error if mercurius is not loaded', async (t) => {
   }
 })
 
-test('registration - should error if authContext not a function', async (t) => {
+test('registration - should error if authContext not a function', async t => {
   t.plan(1)
 
   const app = Fastify()
@@ -59,11 +59,14 @@ test('registration - should error if authContext not a function', async (t) => {
   try {
     await app.register(mercuriusAuth, { authContext: '' })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authContext must be a function.'))
+    t.same(
+      error,
+      new MER_AUTH_ERR_INVALID_OPTS('opts.authContext must be a function.')
+    )
   }
 })
 
-test('registration - should error if applyPolicy not specified', async (t) => {
+test('registration - should error if applyPolicy not specified', async t => {
   t.plan(1)
 
   const app = Fastify()
@@ -78,11 +81,14 @@ test('registration - should error if applyPolicy not specified', async (t) => {
       authContext: () => {}
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.applyPolicy must be a function.'))
+    t.same(
+      error,
+      new MER_AUTH_ERR_INVALID_OPTS('opts.applyPolicy must be a function.')
+    )
   }
 })
 
-test('registration - should error if authDirective not specified', async (t) => {
+test('registration - should error if authDirective not specified', async t => {
   t.plan(1)
 
   const app = Fastify()
@@ -98,11 +104,14 @@ test('registration - should error if authDirective not specified', async (t) => 
       applyPolicy: () => {}
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authDirective must be a string.'))
+    t.same(
+      error,
+      new MER_AUTH_ERR_INVALID_OPTS('opts.authDirective must be a string.')
+    )
   }
 })
 
-test('registration - should register the plugin', async (t) => {
+test('registration - should register the plugin', async t => {
   t.plan(1)
 
   const app = Fastify()

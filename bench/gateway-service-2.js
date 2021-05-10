@@ -72,7 +72,9 @@ const resolvers = {
   },
   User: {
     topPosts: (user, { count }, context, info) => {
-      return Object.values(posts).filter(p => p.authorId === user.id).slice(0, count)
+      return Object.values(posts)
+        .filter(p => p.authorId === user.id)
+        .slice(0, count)
     }
   },
   Query: {

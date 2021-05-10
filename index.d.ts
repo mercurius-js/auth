@@ -1,20 +1,15 @@
-import { FastifyInstance } from "fastify";
-import { DirectiveNode, GraphQLResolveInfo } from "graphql";
-import { MercuriusContext } from "mercurius";
+import { FastifyInstance } from 'fastify'
+import { DirectiveNode, GraphQLResolveInfo } from 'graphql'
+import { MercuriusContext } from 'mercurius'
+
+type ObjectType = Record<string, unknown>
 
 /**
- * @async
- * @name applyPolicy
- * @description the policy promise to run when an auth directive protected field is selected by the query. This must return true in order to pass the check and allow access to the protected field.
- * @param { DirectiveNode } authDirectiveAST
- * @param { TParent } parent
- * @param { TArgs } args
- * @param { TContext } context
- * @param { GraphQLResolveInfo } info
- * @returns `Promise<boolean|Error>`
+ * the policy promise to run when an auth directive protected field is selected by the query.
+ * This must return true in order to pass the check and allow access to the protected field.
  */
 export type ApplyPolicyHandler<
-  TParent = object,
+  TParent = ObjectType,
   TArgs = { [argName: string]: any },
   TContext = MercuriusContext
 > = (
@@ -23,45 +18,43 @@ export type ApplyPolicyHandler<
   args: TArgs,
   context: TContext,
   info: GraphQLResolveInfo
-) => Promise<Boolean | Error>;
+) => Promise<boolean | Error>
 
-/**
- * @name authContext
- * @description  (optional) - assigns the returned data to `MercuriusContext.auth` for use in the `applyPolicy` function.
- * @param { TContext } context
- * @returns {object} `object | Promise<object>`
- */
+/** assigns the returned data to `MercuriusContext.auth` for use in the `applyPolicy` function. (optional) */
 export type AuthContextHandler<TContext = MercuriusContext> = (
   context: TContext
-) => object | Promise<object>;
+) => ObjectType | Promise<ObjectType>
 
-/**
- * mercurius-auth supports the following options
- * @param { string } authDirective
- * @param { ApplyPolicyHandler } applyPolicy
- * @param { AuthContextHandler= } [authContext]
- */
-export type MercuriusAuthOptions = {
-  authDirective: string;
-  applyPolicy: ApplyPolicyHandler;
-  authContext?: AuthContextHandler;
-};
+export interface MercuriusAuthOptions<
+  TParent = ObjectType,
+  TArgs = { [argName: string]: any },
+  TContext = MercuriusContext
+> {
+  /**
+   * @property { string } authDirective
+   * @description the name of the directive that the Mercurius auth plugin will look for within the GraphQL schema in order to identify protected fields.
+   * @example for directive definition `directive @auth on OBJECT | FIELD_DEFINITION`, the corresponding name would be auth.
+   */
+  authDirective: string
+  /**
+   * the policy promise to run when an auth directive protected field is selected by the query.
+   * This must return true in order to pass the check and allow access to the protected field.
+   */
+  applyPolicy: ApplyPolicyHandler<TParent, TArgs, TContext>
+  /** assigns the returned data to `MercuriusContext.auth` for use in the `applyPolicy` function. (optional) */
+  authContext?: AuthContextHandler<TContext>
+}
 
-/**
- * @func mercuriusAuth
- * @param { FastifyInstance } instance
- * @param  { MercuriusAuthOptions } options
- * @description Mercurius Auth is a plugin for `mercurius` that adds configurable Authentication and Authorization support.
- */
+/** Mercurius Auth is a plugin for `mercurius` that adds configurable Authentication and Authorization support. */
 declare function mercuriusAuth(
   instance: FastifyInstance,
-  options: MercuriusAuthOptions
-): void;
+  options: MercuriusAuthOptions<any, any, any>
+): void
 
-declare module "fastify" {
+declare module 'mercurius' {
   interface MercuriusContext {
-    auth?: object;
+    auth?: { [argName: string]: any }
   }
 }
 
-export default mercuriusAuth;
+export default mercuriusAuth

@@ -5,7 +5,7 @@ const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
 
-async function createTestService (t, schema, resolvers = {}) {
+async function createTestService(t, schema, resolvers = {}) {
   const service = Fastify()
   service.register(mercurius, {
     schema,
@@ -54,7 +54,7 @@ const posts = {
   }
 }
 
-async function createTestGatewayServer (t, authOpts) {
+async function createTestGatewayServer(t, authOpts) {
   // User service
   const userServiceSchema = `
   directive @auth(
@@ -90,7 +90,11 @@ async function createTestGatewayServer (t, authOpts) {
       }
     }
   }
-  const [userService, userServicePort] = await createTestService(t, userServiceSchema, userServiceResolvers)
+  const [userService, userServicePort] = await createTestService(
+    t,
+    userServiceSchema,
+    userServiceResolvers
+  )
 
   // Post service
   const postServiceSchema = `
@@ -134,14 +138,20 @@ async function createTestGatewayServer (t, authOpts) {
     },
     User: {
       topPosts: (user, { count }, context, info) => {
-        return Object.values(posts).filter(p => p.authorId === user.id).slice(0, count)
+        return Object.values(posts)
+          .filter(p => p.authorId === user.id)
+          .slice(0, count)
       }
     },
     Query: {
       topPosts: (root, { count = 2 }) => Object.values(posts).slice(0, count)
     }
   }
-  const [postService, postServicePort] = await createTestService(t, postServiceSchema, postServiceResolvers)
+  const [postService, postServicePort] = await createTestService(
+    t,
+    postServiceSchema,
+    postServiceResolvers
+  )
 
   const gateway = Fastify()
   t.teardown(async () => {
@@ -151,31 +161,37 @@ async function createTestGatewayServer (t, authOpts) {
   })
   gateway.register(mercurius, {
     gateway: {
-      services: [{
-        name: 'user',
-        url: `http://localhost:${userServicePort}/graphql`
-      }, {
-        name: 'post',
-        url: `http://localhost:${postServicePort}/graphql`
-      }]
+      services: [
+        {
+          name: 'user',
+          url: `http://localhost:${userServicePort}/graphql`
+        },
+        {
+          name: 'post',
+          url: `http://localhost:${postServicePort}/graphql`
+        }
+      ]
     }
   })
 
-  gateway.register(mercuriusAuth, authOpts || {
-    authContext (context) {
-      return {
-        identity: context.reply.request.headers['x-user']
-      }
-    },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      return context.auth.identity === 'admin'
-    },
-    authDirective: 'auth'
-  })
+  gateway.register(
+    mercuriusAuth,
+    authOpts || {
+      authContext(context) {
+        return {
+          identity: context.reply.request.headers['x-user']
+        }
+      },
+      async applyPolicy(authDirectiveAST, parent, args, context, info) {
+        return context.auth.identity === 'admin'
+      },
+      authDirective: 'auth'
+    }
+  )
   return gateway
 }
 
-test('gateway - should protect the schema as normal if everything is okay', async (t) => {
+test('gateway - should protect the schema as normal if everything is okay', async t => {
   t.plan(1)
   const app = await createTestGatewayServer(t)
 
@@ -236,7 +252,7 @@ test('gateway - should protect the schema as normal if everything is okay', asyn
   })
 })
 
-test('gateway - should protect the schema if everything is not okay', async (t) => {
+test('gateway - should protect the schema if everything is not okay', async t => {
   t.plan(1)
   const app = await createTestGatewayServer(t)
 
@@ -284,24 +300,44 @@ test('gateway - should protect the schema if everything is not okay', async (t) 
       topPosts: null
     },
     errors: [
-      { message: 'Failed auth policy check on topPosts', locations: [{ line: 13, column: 3 }], path: ['topPosts'] },
-      { message: 'Failed auth policy check on name', locations: [{ line: 4, column: 5 }], path: ['me', 'name'] },
-      { message: 'Failed auth policy check on name', locations: [{ line: 5, column: 5 }], path: ['me', 'nickname'] },
-      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 0, 'author'] },
-      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 1, 'author'] }
+      {
+        message: 'Failed auth policy check on topPosts',
+        locations: [{ line: 13, column: 3 }],
+        path: ['topPosts']
+      },
+      {
+        message: 'Failed auth policy check on name',
+        locations: [{ line: 4, column: 5 }],
+        path: ['me', 'name']
+      },
+      {
+        message: 'Failed auth policy check on name',
+        locations: [{ line: 5, column: 5 }],
+        path: ['me', 'nickname']
+      },
+      {
+        message: 'Failed auth policy check on author',
+        locations: [{ line: 8, column: 7 }],
+        path: ['me', 'topPosts', 0, 'author']
+      },
+      {
+        message: 'Failed auth policy check on author',
+        locations: [{ line: 8, column: 7 }],
+        path: ['me', 'topPosts', 1, 'author']
+      }
     ]
   })
 })
 
-test('gateway - should handle custom errors', async (t) => {
+test('gateway - should handle custom errors', async t => {
   t.plan(1)
   const app = await createTestGatewayServer(t, {
-    authContext (context) {
+    authContext(context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       if (context.auth.identity !== 'admin') {
         return new Error(`custom auth error on ${info.fieldName}`)
       }
@@ -354,19 +390,39 @@ test('gateway - should handle custom errors', async (t) => {
       topPosts: null
     },
     errors: [
-      { message: 'custom auth error on topPosts', locations: [{ line: 13, column: 3 }], path: ['topPosts'] },
-      { message: 'custom auth error on name', locations: [{ line: 4, column: 5 }], path: ['me', 'name'] },
-      { message: 'custom auth error on name', locations: [{ line: 5, column: 5 }], path: ['me', 'nickname'] },
-      { message: 'custom auth error on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 0, 'author'] },
-      { message: 'custom auth error on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 1, 'author'] }
+      {
+        message: 'custom auth error on topPosts',
+        locations: [{ line: 13, column: 3 }],
+        path: ['topPosts']
+      },
+      {
+        message: 'custom auth error on name',
+        locations: [{ line: 4, column: 5 }],
+        path: ['me', 'name']
+      },
+      {
+        message: 'custom auth error on name',
+        locations: [{ line: 5, column: 5 }],
+        path: ['me', 'nickname']
+      },
+      {
+        message: 'custom auth error on author',
+        locations: [{ line: 8, column: 7 }],
+        path: ['me', 'topPosts', 0, 'author']
+      },
+      {
+        message: 'custom auth error on author',
+        locations: [{ line: 8, column: 7 }],
+        path: ['me', 'topPosts', 1, 'author']
+      }
     ]
   })
 })
 
-test('gateway - should handle when auth context is not defined', async (t) => {
+test('gateway - should handle when auth context is not defined', async t => {
   t.plan(1)
   const app = await createTestGatewayServer(t, {
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       if (context.other.identity !== 'admin') {
         return new Error(`custom auth error on ${info.fieldName}`)
       }
@@ -375,13 +431,16 @@ test('gateway - should handle when auth context is not defined', async (t) => {
     authDirective: 'auth'
   })
 
-  app.graphql.addHook('preGatewayExecution', async (schema, document, context, service) => {
-    Object.assign(context, {
-      other: {
-        identity: context.reply.request.headers['x-user']
-      }
-    })
-  })
+  app.graphql.addHook(
+    'preGatewayExecution',
+    async (schema, document, context, service) => {
+      Object.assign(context, {
+        other: {
+          identity: context.reply.request.headers['x-user']
+        }
+      })
+    }
+  )
 
   const query = `query {
   me {

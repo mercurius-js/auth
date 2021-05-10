@@ -6,7 +6,7 @@ const mercurius = require('mercurius')
 const { GraphQLSchema } = require('graphql')
 const mercuriusAuth = require('..')
 
-test('apply policy - should provide authDirectiveAST', async (t) => {
+test('apply policy - should provide authDirectiveAST', async t => {
   t.plan(4)
 
   const app = Fastify()
@@ -39,12 +39,12 @@ test('apply policy - should provide authDirectiveAST', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext (context) {
+    authContext(context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       t.equal(authDirectiveAST.kind, 'Directive')
       t.equal(authDirectiveAST.name.value, 'auth')
       t.same(authDirectiveAST.arguments, [])
@@ -73,7 +73,7 @@ test('apply policy - should provide authDirectiveAST', async (t) => {
   })
 })
 
-test('apply policy - should provide auth on context', async (t) => {
+test('apply policy - should provide auth on context', async t => {
   t.plan(2)
 
   const app = Fastify()
@@ -106,12 +106,12 @@ test('apply policy - should provide auth on context', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext (context) {
+    authContext(context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       t.same(context.auth, { identity: 'ADMIN' })
       return true
     },
@@ -138,7 +138,7 @@ test('apply policy - should provide auth on context', async (t) => {
   })
 })
 
-test('apply policy - should have access to parent', async (t) => {
+test('apply policy - should have access to parent', async t => {
   t.plan(2)
 
   const app = Fastify()
@@ -173,12 +173,12 @@ test('apply policy - should have access to parent', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext (context) {
+    authContext(context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       t.same(parent, { title: 'one', private: 'private one' })
       return true
     },
@@ -211,7 +211,7 @@ test('apply policy - should have access to parent', async (t) => {
   })
 })
 
-test('apply policy - should have access to args', async (t) => {
+test('apply policy - should have access to args', async t => {
   t.plan(2)
 
   const app = Fastify()
@@ -244,12 +244,12 @@ test('apply policy - should have access to args', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext (context) {
+    authContext(context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       t.same(args, { x: 2, y: 2 })
       return true
     },
@@ -276,7 +276,7 @@ test('apply policy - should have access to args', async (t) => {
   })
 })
 
-test('apply policy - should have access to info', async (t) => {
+test('apply policy - should have access to info', async t => {
   t.plan(4)
 
   const app = Fastify()
@@ -309,12 +309,12 @@ test('apply policy - should have access to info', async (t) => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext (context) {
+    authContext(context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       t.equal(info.fieldName, 'add')
       t.type(info.schema, GraphQLSchema)
       t.same(info.path, { prev: undefined, key: 'four', typename: 'Query' })

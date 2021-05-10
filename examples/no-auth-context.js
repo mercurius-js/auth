@@ -27,7 +27,7 @@ const resolvers = {
   }
 }
 
-async function start () {
+async function start() {
   const app = Fastify()
 
   app.register(mercurius, {
@@ -36,7 +36,7 @@ async function start () {
   })
 
   await app.register(mercuriusAuth, {
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       return context.other.identity === 'admin'
     },
     authDirective: 'auth'

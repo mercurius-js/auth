@@ -54,27 +54,29 @@ const resolvers = {
   }
 }
 
-function authContext (context) {
+function authContext(context) {
   return {
     identity: context.reply.request.headers['x-user']
   }
 }
 
-async function applyPolicy (authDirectiveAST, parent, args, context, info) {
+async function applyPolicy(authDirectiveAST, parent, args, context, info) {
   const requestedOrg = args.org
   const username = context.auth.identity
 
   if (orgMembers[requestedOrg]) {
     const result = orgMembers[requestedOrg].includes(username)
     if (!result) {
-      throw new Error(`Insufficient access: user ${username} not a member of ${requestedOrg}`)
+      throw new Error(
+        `Insufficient access: user ${username} not a member of ${requestedOrg}`
+      )
     }
     return true
   }
   return false
 }
 
-test('should be able to access the query to determine that users have sufficient access to run related operations', async (t) => {
+test('should be able to access the query to determine that users have sufficient access to run related operations', async t => {
   t.plan(1)
 
   const app = Fastify()
@@ -121,7 +123,7 @@ test('should be able to access the query to determine that users have sufficient
   })
 })
 
-test('should be able to access the query to determine that users have insufficient access to run related operations', async (t) => {
+test('should be able to access the query to determine that users have insufficient access to run related operations', async t => {
   t.plan(1)
 
   const app = Fastify()
@@ -165,15 +167,13 @@ test('should be able to access the query to determine that users have insufficie
             column: 5
           }
         ],
-        path: [
-          'messages'
-        ]
+        path: ['messages']
       }
     ]
   })
 })
 
-test('should support being registered multiple times', async (t) => {
+test('should support being registered multiple times', async t => {
   t.plan(2)
 
   const app = Fastify()
@@ -209,19 +209,19 @@ test('should support being registered multiple times', async (t) => {
   })
 
   app.register(mercuriusAuth, {
-    authContext (context) {
+    authContext(context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       return context.auth.identity.includes('user')
     },
     authDirective: 'auth1'
   })
 
   app.register(mercuriusAuth, {
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    async applyPolicy(authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'super-user'
     },
     authDirective: 'auth2'
@@ -254,9 +254,7 @@ test('should support being registered multiple times', async (t) => {
               column: 5
             }
           ],
-          path: [
-            'subtract'
-          ]
+          path: ['subtract']
         }
       ]
     })
