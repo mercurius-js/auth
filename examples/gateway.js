@@ -4,7 +4,7 @@ const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
 
-async function createService(schema, resolvers = {}) {
+async function createService (schema, resolvers = {}) {
   const service = Fastify()
   service.register(mercurius, {
     schema,
@@ -53,7 +53,7 @@ const posts = {
   }
 }
 
-async function start(authOpts) {
+async function start (authOpts) {
   // User service
   const userServiceSchema = `
   directive @auth(
@@ -89,10 +89,7 @@ async function start(authOpts) {
       }
     }
   }
-  const [, userServicePort] = await createService(
-    userServiceSchema,
-    userServiceResolvers
-  )
+  const [, userServicePort] = await createService(userServiceSchema, userServiceResolvers)
 
   // Post service
   const postServiceSchema = `
@@ -136,51 +133,40 @@ async function start(authOpts) {
     },
     User: {
       topPosts: (user, { count }, context, info) => {
-        return Object.values(posts)
-          .filter(p => p.authorId === user.id)
-          .slice(0, count)
+        return Object.values(posts).filter(p => p.authorId === user.id).slice(0, count)
       }
     },
     Query: {
       topPosts: (root, { count = 2 }) => Object.values(posts).slice(0, count)
     }
   }
-  const [, postServicePort] = await createService(
-    postServiceSchema,
-    postServiceResolvers
-  )
+  const [, postServicePort] = await createService(postServiceSchema, postServiceResolvers)
 
   const gateway = Fastify()
 
   gateway.register(mercurius, {
     gateway: {
-      services: [
-        {
-          name: 'user',
-          url: `http://localhost:${userServicePort}/graphql`
-        },
-        {
-          name: 'post',
-          url: `http://localhost:${postServicePort}/graphql`
-        }
-      ]
+      services: [{
+        name: 'user',
+        url: `http://localhost:${userServicePort}/graphql`
+      }, {
+        name: 'post',
+        url: `http://localhost:${postServicePort}/graphql`
+      }]
     }
   })
 
-  gateway.register(
-    mercuriusAuth,
-    authOpts || {
-      authContext(context) {
-        return {
-          identity: context.reply.request.headers['x-user']
-        }
-      },
-      async applyPolicy(authDirectiveAST, parent, args, context, info) {
-        return context.auth.identity === 'admin'
-      },
-      authDirective: 'auth'
-    }
-  )
+  gateway.register(mercuriusAuth, authOpts || {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      return context.auth.identity === 'admin'
+    },
+    authDirective: 'auth'
+  })
 
   await gateway.listen(3000)
 }

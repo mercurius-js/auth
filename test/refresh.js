@@ -9,7 +9,7 @@ const mercuriusAuth = require('..')
 
 const immediate = promisify(setImmediate)
 
-test('polling interval with a new schema should trigger refresh of schema policy build', async t => {
+test('polling interval with a new schema should trigger refresh of schema policy build', async (t) => {
   t.plan(4)
 
   const clock = FakeTimers.install({
@@ -74,12 +74,12 @@ test('polling interval with a new schema should trigger refresh of schema policy
   })
 
   await gateway.register(mercuriusAuth, {
-    authContext(context) {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy(authDirectiveAST, parent, args, context, info) {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       t.ok('should be called')
       return context.auth.identity === 'admin'
     },
@@ -117,7 +117,10 @@ test('polling interval with a new schema should trigger refresh of schema policy
               column: 7
             }
           ],
-          path: ['me', 'name']
+          path: [
+            'me',
+            'name'
+          ]
         }
       ]
     })
@@ -180,7 +183,10 @@ test('polling interval with a new schema should trigger refresh of schema policy
               column: 7
             }
           ],
-          path: ['me', 'lastName']
+          path: [
+            'me',
+            'lastName'
+          ]
         }
       ]
     })

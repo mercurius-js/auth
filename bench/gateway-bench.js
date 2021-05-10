@@ -26,12 +26,11 @@ const instance = autocannon(
     title: '',
     method: 'POST',
     headers: {
-      'content-type': 'application/json',
-      'x-user': 'admin'
+      'content-type': 'application/json', 'x-user': 'admin'
     },
     body: JSON.stringify({ query })
   },
-  err => {
+  (err) => {
     if (err) {
       console.error(err)
     }

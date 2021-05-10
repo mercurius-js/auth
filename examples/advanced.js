@@ -61,21 +61,19 @@ app.register(mercurius, {
 })
 
 app.register(mercuriusAuth, {
-  authContext(context) {
+  authContext (context) {
     return {
       identity: context.reply.request.headers['x-user']
     }
   },
-  async applyPolicy(authDirectiveAST, parent, args, context, info) {
+  async applyPolicy (authDirectiveAST, parent, args, context, info) {
     const requestedOrg = args.org
     const username = context.auth.identity
 
     if (orgMembers[requestedOrg]) {
       const result = orgMembers[requestedOrg].includes(username)
       if (!result) {
-        throw new Error(
-          `Insufficient access: user ${username} not a member of ${requestedOrg}`
-        )
+        throw new Error(`Insufficient access: user ${username} not a member of ${requestedOrg}`)
       }
       return true
     }

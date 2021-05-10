@@ -35,12 +35,12 @@ app.register(mercurius, {
 })
 
 app.register(mercuriusAuth, {
-  authContext(context) {
+  authContext (context) {
     return {
       identity: context.reply.request.headers['x-user']
     }
   },
-  async applyPolicy(authDirectiveAST, parent, args, context, info) {
+  async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity === 'admin'
   },
   authDirective: 'auth'

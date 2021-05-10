@@ -37,19 +37,19 @@ app.register(mercurius, {
 })
 
 app.register(mercuriusAuth, {
-  authContext(context) {
+  authContext (context) {
     return {
       identity: context.reply.request.headers['x-user']
     }
   },
-  async applyPolicy(authDirectiveAST, parent, args, context, info) {
+  async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity.includes('user')
   },
   authDirective: 'auth1'
 })
 
 app.register(mercuriusAuth, {
-  async applyPolicy(authDirectiveAST, parent, args, context, info) {
+  async applyPolicy (authDirectiveAST, parent, args, context, info) {
     return context.auth.identity === 'super-user'
   },
   authDirective: 'auth2'

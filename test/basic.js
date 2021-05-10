@@ -72,7 +72,7 @@ const resolvers = {
   }
 }
 
-test('basic - should protect the schema and not affect queries when everything is okay', async t => {
+test('basic - should protect the schema and not affect queries when everything is okay', async (t) => {
   t.plan(1)
 
   const app = Fastify()
@@ -83,12 +83,12 @@ test('basic - should protect the schema and not affect queries when everything i
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext(context) {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy(authDirectiveAST, parent, args, context, info) {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: 'auth'
@@ -150,7 +150,7 @@ test('basic - should protect the schema and not affect queries when everything i
   })
 })
 
-test('basic - should protect the schema and error accordingly', async t => {
+test('basic - should protect the schema and error accordingly', async (t) => {
   t.plan(1)
 
   const app = Fastify()
@@ -161,12 +161,12 @@ test('basic - should protect the schema and error accordingly', async t => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext(context) {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy(authDirectiveAST, parent, args, context, info) {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: 'auth'
@@ -215,36 +215,16 @@ test('basic - should protect the schema and error accordingly', async t => {
       adminMessages: null
     },
     errors: [
-      {
-        message: 'Failed auth policy check on add',
-        locations: [{ line: 2, column: 3 }],
-        path: ['four']
-      },
-      {
-        message: 'Failed auth policy check on add',
-        locations: [{ line: 3, column: 3 }],
-        path: ['six']
-      },
-      {
-        message: 'Failed auth policy check on adminMessages',
-        locations: [{ line: 10, column: 3 }],
-        path: ['adminMessages']
-      },
-      {
-        message: 'Failed auth policy check on private',
-        locations: [{ line: 8, column: 5 }],
-        path: ['messages', 0, 'private']
-      },
-      {
-        message: 'Failed auth policy check on private',
-        locations: [{ line: 8, column: 5 }],
-        path: ['messages', 1, 'private']
-      }
+      { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'Failed auth policy check on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
     ]
   })
 })
 
-test('basic - should work alongside existing directives', async t => {
+test('basic - should work alongside existing directives', async (t) => {
   t.plan(1)
 
   const schema = `
@@ -293,12 +273,12 @@ test('basic - should work alongside existing directives', async t => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext(context) {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy(authDirectiveAST, parent, args, context, info) {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: 'auth'
@@ -318,21 +298,13 @@ test('basic - should work alongside existing directives', async t => {
       subtract: 0
     },
     errors: [
-      {
-        message: 'Failed auth policy check on add',
-        locations: [{ line: 2, column: 3 }],
-        path: ['four']
-      },
-      {
-        message: 'Failed auth policy check on add',
-        locations: [{ line: 3, column: 3 }],
-        path: ['six']
-      }
+      { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] }
     ]
   })
 })
 
-test('basic - should handle when no fields within a type are allowed', async t => {
+test('basic - should handle when no fields within a type are allowed', async (t) => {
   t.plan(1)
 
   const schema = `
@@ -402,12 +374,12 @@ test('basic - should handle when no fields within a type are allowed', async t =
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext(context) {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy(authDirectiveAST, parent, args, context, info) {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: 'auth'
@@ -437,41 +409,17 @@ test('basic - should handle when no fields within a type are allowed', async t =
       ]
     },
     errors: [
-      {
-        message: 'Failed auth policy check on add',
-        locations: [{ line: 2, column: 3 }],
-        path: ['four']
-      },
-      {
-        message: 'Failed auth policy check on add',
-        locations: [{ line: 3, column: 3 }],
-        path: ['six']
-      },
-      {
-        message: 'Failed auth policy check on title',
-        locations: [{ line: 6, column: 5 }],
-        path: ['messages', 0, 'title']
-      },
-      {
-        message: 'Failed auth policy check on private',
-        locations: [{ line: 7, column: 5 }],
-        path: ['messages', 0, 'private']
-      },
-      {
-        message: 'Failed auth policy check on title',
-        locations: [{ line: 6, column: 5 }],
-        path: ['messages', 1, 'title']
-      },
-      {
-        message: 'Failed auth policy check on private',
-        locations: [{ line: 7, column: 5 }],
-        path: ['messages', 1, 'private']
-      }
+      { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 5 }], path: ['messages', 0, 'title'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 5 }], path: ['messages', 0, 'private'] },
+      { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 5 }], path: ['messages', 1, 'title'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 5 }], path: ['messages', 1, 'private'] }
     ]
   })
 })
 
-test('basic - should handle custom errors thrown in applyPolicy', async t => {
+test('basic - should handle custom errors thrown in applyPolicy', async (t) => {
   t.plan(1)
 
   const app = Fastify()
@@ -482,12 +430,12 @@ test('basic - should handle custom errors thrown in applyPolicy', async t => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext(context) {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy(authDirectiveAST, parent, args, context, info) {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       if (context.auth.identity !== 'admin') {
         throw new Error(`custom auth error on ${info.fieldName}`)
       }
@@ -539,36 +487,16 @@ test('basic - should handle custom errors thrown in applyPolicy', async t => {
       adminMessages: null
     },
     errors: [
-      {
-        message: 'custom auth error on add',
-        locations: [{ line: 2, column: 3 }],
-        path: ['four']
-      },
-      {
-        message: 'custom auth error on add',
-        locations: [{ line: 3, column: 3 }],
-        path: ['six']
-      },
-      {
-        message: 'custom auth error on adminMessages',
-        locations: [{ line: 10, column: 3 }],
-        path: ['adminMessages']
-      },
-      {
-        message: 'custom auth error on private',
-        locations: [{ line: 8, column: 5 }],
-        path: ['messages', 0, 'private']
-      },
-      {
-        message: 'custom auth error on private',
-        locations: [{ line: 8, column: 5 }],
-        path: ['messages', 1, 'private']
-      }
+      { message: 'custom auth error on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'custom auth error on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'custom auth error on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
     ]
   })
 })
 
-test('basic - should handle custom errors returned in applyPolicy', async t => {
+test('basic - should handle custom errors returned in applyPolicy', async (t) => {
   t.plan(1)
 
   const app = Fastify()
@@ -579,12 +507,12 @@ test('basic - should handle custom errors returned in applyPolicy', async t => {
     resolvers
   })
   app.register(mercuriusAuth, {
-    authContext(context) {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy(authDirectiveAST, parent, args, context, info) {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       if (context.auth.identity !== 'admin') {
         return new Error(`custom auth error on ${info.fieldName}`)
       }
@@ -636,36 +564,16 @@ test('basic - should handle custom errors returned in applyPolicy', async t => {
       adminMessages: null
     },
     errors: [
-      {
-        message: 'custom auth error on add',
-        locations: [{ line: 2, column: 3 }],
-        path: ['four']
-      },
-      {
-        message: 'custom auth error on add',
-        locations: [{ line: 3, column: 3 }],
-        path: ['six']
-      },
-      {
-        message: 'custom auth error on adminMessages',
-        locations: [{ line: 10, column: 3 }],
-        path: ['adminMessages']
-      },
-      {
-        message: 'custom auth error on private',
-        locations: [{ line: 8, column: 5 }],
-        path: ['messages', 0, 'private']
-      },
-      {
-        message: 'custom auth error on private',
-        locations: [{ line: 8, column: 5 }],
-        path: ['messages', 1, 'private']
-      }
+      { message: 'custom auth error on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
+      { message: 'custom auth error on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
+      { message: 'custom auth error on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
     ]
   })
 })
 
-test('basic - should handle when auth context is not defined', async t => {
+test('basic - should handle when auth context is not defined', async (t) => {
   t.plan(3)
 
   const app = Fastify()
@@ -676,7 +584,7 @@ test('basic - should handle when auth context is not defined', async t => {
     resolvers
   })
   await app.register(mercuriusAuth, {
-    async applyPolicy(authDirectiveAST, parent, args, context, info) {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.other.identity === 'admin'
     },
     authDirective: 'auth'
@@ -746,7 +654,7 @@ test('basic - should handle when auth context is not defined', async t => {
   })
 })
 
-test('basic - should support jit', async t => {
+test('basic - should support jit', async (t) => {
   t.plan(2)
 
   const app = Fastify()
@@ -758,12 +666,12 @@ test('basic - should support jit', async t => {
     jit: 1
   })
   app.register(mercuriusAuth, {
-    authContext(context) {
+    authContext (context) {
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
-    async applyPolicy(authDirectiveAST, parent, args, context, info) {
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
       return context.auth.identity === 'admin'
     },
     authDirective: 'auth'
