@@ -8,7 +8,6 @@ import mercuriusAuth, {
   MercuriusAuthOptions
 } from '../..'
 
-type ObjectType = Record<string, any>;
 const app = fastify()
 
 // 1. BASIC USAGE: DEFAULT TYPES
@@ -29,12 +28,12 @@ app.register(mercuriusAuth, {
   }
 })
 
-// 2. Using options as object
+// 2. Using options as object without generic
 interface CustomParent {
-  parent: ObjectType;
+  parent: Record<string, any>;
 }
 interface CustomArgs {
-  arg: ObjectType;
+  arg: Record<string, any>;
 }
 interface CustomContext extends MercuriusContext {
   auth?: { identity?: string };
@@ -64,14 +63,34 @@ const authOptions: MercuriusAuthOptions = {
 
 app.register(mercuriusAuth, authOptions)
 
-// 3. creating functions using types handlers
-const authContext: AuthContextHandler = (context: CustomContext) => {
+// 2. Using options as object with generics
+const authOptionsWithGenerics: MercuriusAuthOptions<CustomParent, CustomArgs, CustomContext> = {
+  authDirective: 'auth',
+  async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    expectType<DirectiveNode>(authDirectiveAST)
+    expectType<CustomParent>(parent)
+    expectType<CustomArgs>(args)
+    expectType<CustomContext>(context)
+    expectType<GraphQLResolveInfo>(info)
+    expectType<string | undefined>(context?.auth?.identity)
+    return true
+  },
+  authContext (context) {
+    expectType<CustomContext>(context)
+    return { identity: context.reply.request.headers['x-auth'] }
+  }
+}
+
+app.register(mercuriusAuth, authOptionsWithGenerics)
+
+// 4. creating functions using types handlers
+const authContext: AuthContextHandler<CustomContext> = (context) => {
   expectType<CustomContext>(context)
   return { identity: context.reply.request.headers['x-auth'] }
 }
 
-const applyPolicy: ApplyPolicyHandler =
-  async (authDirectiveAST, parent: {}, args: {}, context: CustomContext, info) => {
+const applyPolicy: ApplyPolicyHandler<{}, {}, CustomContext> =
+  async (authDirectiveAST, parent, args, context, info) => {
     expectType<DirectiveNode>(authDirectiveAST)
     expectType<{}>(parent)
     expectType<{}>(args)
