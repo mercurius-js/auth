@@ -35,7 +35,7 @@ declare const mercuriusAuth: FastifyPluginAsync<MercuriusAuthOptions>
 export interface MercuriusAuthContext extends Record<string, any> {}
 
 declare module 'mercurius' {
-  interface MercuriusContext {
+  export interface MercuriusContext {
     auth?: MercuriusAuthContext
   }
 }
