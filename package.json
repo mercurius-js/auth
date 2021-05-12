@@ -7,7 +7,7 @@
   "scripts": {
     "unit": "tap --100 test/*.js",
     "cov": "tap --coverage-report=html -J test/*.js",
-    "lint": "npm run lint:standard & npm run lint:typescript",
+    "lint": "npm run lint:standard && npm run lint:typescript",
     "lint:standard": "standard | snazzy",
     "lint:typescript": "standard --parser @typescript-eslint/parser --plugin @typescript-eslint/eslint-plugin index.d.ts test/types/*.ts | snazzy",
     "typescript": "tsd",
