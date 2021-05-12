@@ -1,11 +1,12 @@
 import { expectType } from 'tsd'
 import fastify from 'fastify'
 import { DirectiveNode, GraphQLResolveInfo } from 'graphql'
-import { MercuriusContext } from 'mercurius'
+import {  MercuriusContext } from 'mercurius'
 import mercuriusAuth, {
   ApplyPolicyHandler,
   AuthContextHandler,
-  MercuriusAuthOptions
+  MercuriusAuthOptions,
+  MercuriusAuthContext
 } from '../..'
 
 const app = fastify()
@@ -19,7 +20,8 @@ app.register(mercuriusAuth, {
     expectType<any>(args)
     expectType<MercuriusContext>(context)
     expectType<GraphQLResolveInfo>(info)
-    expectType<MercuriusContext['auth']>(context.auth)
+    // `context.auth` may be undefined if `authContext` is not provided
+    expectType<MercuriusAuthContext|undefined>(context.auth)
     return true
   },
   authContext (context) {
@@ -63,7 +65,7 @@ const authOptions: MercuriusAuthOptions = {
 
 app.register(mercuriusAuth, authOptions)
 
-// 2. Using options as object with generics
+// 3. Using options as object with generics
 const authOptionsWithGenerics: MercuriusAuthOptions<CustomParent, CustomArgs, CustomContext> = {
   authDirective: 'auth',
   async applyPolicy (authDirectiveAST, parent, args, context, info) {

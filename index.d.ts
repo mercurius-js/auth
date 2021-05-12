@@ -32,11 +32,12 @@ export interface MercuriusAuthOptions<TParent=any, TArgs=any, TContext=Mercurius
 /** Mercurius Auth is a plugin for `mercurius` that adds configurable Authentication and Authorization support. */
 declare const mercuriusAuth: FastifyPluginAsync<MercuriusAuthOptions>
 
+export interface MercuriusAuthContext extends Record<string, any> {}
+
 declare module 'mercurius' {
-  interface MercuriusAuthContext {
-    auth?: Record<string, any>
+  interface MercuriusContext {
+    auth?: MercuriusAuthContext
   }
-  export interface MercuriusContext extends MercuriusAuthContext {}
 }
 
 export default mercuriusAuth
