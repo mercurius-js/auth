@@ -1,3 +1,4 @@
+import { expectType } from 'tsd'
 import fastify from 'fastify'
 import { DirectiveNode, GraphQLResolveInfo } from 'graphql'
 import { MercuriusContext } from 'mercurius'
