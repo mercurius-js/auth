@@ -38,7 +38,7 @@
     "autocannon": "^7.0.5",
     "concurrently": "^6.1.0",
     "fastify": "^3.0.2",
-    "mercurius": "^7.5.0",
+    "mercurius": "^8.0.0",
     "pre-commit": "^1.2.2",
     "snazzy": "^9.0.0",
     "standard": "^16.0.3",
