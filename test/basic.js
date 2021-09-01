@@ -776,3 +776,263 @@ test('basic - should support jit', async (t) => {
     })
   }
 })
+
+test('basic - should work at type level with field resolvers', async (t) => {
+  t.plan(1)
+
+  const schema = `
+    directive @auth(
+      requires: Role = ADMIN,
+    ) on OBJECT | FIELD_DEFINITION
+
+    enum Role {
+      ADMIN
+      REVIEWER
+      USER
+      UNKNOWN
+    }
+
+    type Query {
+      getUser: User
+    }
+
+    type User @auth(requires: USER) {
+      id: Int
+      name: String
+    }`
+
+  const resolvers = {
+    Query: {
+      getUser: async (_, obj) => ({
+        id: 1,
+        name: 'testuser',
+        test: 'TEST'
+      })
+    },
+    User: {
+      id: async (src) => src.id
+    }
+  }
+
+  const query = `query {
+    getUser {
+      id
+      name
+    }
+  }`
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  app.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      return context.auth.identity === 'user'
+    },
+    authDirective: 'auth'
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-User': 'user' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(response.body), {
+    data: {
+      getUser: {
+        id: 1,
+        name: 'testuser'
+      }
+    }
+  })
+})
+
+test('basic - should work at type level with nested directive', async (t) => {
+  t.plan(1)
+
+  const schema = `
+    directive @auth(
+      requires: Role = ADMIN,
+    ) on OBJECT | FIELD_DEFINITION
+
+    enum Role {
+      ADMIN
+      REVIEWER
+      USER
+      UNKNOWN
+    }
+
+    type Query {
+      getUser: User
+    }
+
+    type User @auth(requires: USER) {
+      id: Int
+      name: String
+      protected: String @auth(requires: ADMIN)
+    }`
+
+  const resolvers = {
+    Query: {
+      getUser: async (_, obj) => ({
+        id: 1,
+        name: 'testuser',
+        protected: 'protected data'
+      })
+    },
+    User: {
+      id: async (src) => src.id
+    }
+  }
+
+  const query = `query {
+    getUser {
+      id
+      name
+      protected
+    }
+  }`
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  app.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user'].toUpperCase().split(',')
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      const findArg = (arg, ast) => {
+        let result
+        ast.arguments.forEach((a) => {
+          if (a.kind === 'Argument' &&
+            a.name.value === arg) {
+            result = a.value.value
+          }
+        })
+        return result
+      }
+      const requires = findArg('requires', authDirectiveAST)
+      return context.auth.identity.includes(requires)
+    },
+    authDirective: 'auth'
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-User': 'user' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(response.body), {
+    data: {
+      getUser: {
+        id: 1,
+        name: 'testuser',
+        protected: null
+      }
+    },
+    errors: [
+      { message: 'Failed auth policy check on protected', locations: [{ line: 5, column: 7 }], path: ['getUser', 'protected'] }
+    ]
+  })
+})
+
+test('basic - should error for all fields in type', async (t) => {
+  t.plan(1)
+
+  const schema = `
+    directive @auth(
+      requires: Role = ADMIN,
+    ) on OBJECT | FIELD_DEFINITION
+
+    enum Role {
+      ADMIN
+      REVIEWER
+      USER
+      UNKNOWN
+    }
+
+    type Query {
+      getUser: User
+    }
+
+    type User @auth(requires: ADMIN) {
+      id: Int
+      name: String
+    }`
+
+  const resolvers = {
+    Query: {
+      getUser: async (_, obj) => ({
+        id: 1,
+        name: 'testuser'
+      })
+    },
+    User: {
+      id: async (src) => src.id
+    }
+  }
+
+  const query = `query {
+    getUser {
+      id
+      name
+    }
+  }`
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  app.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      return context.auth.identity === 'admin'
+    },
+    authDirective: 'auth'
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-User': 'user' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(JSON.parse(response.body), {
+    data: {
+      getUser: {
+        id: null,
+        name: null
+      }
+    },
+    errors: [
+      { message: 'Failed auth policy check on id', locations: [{ line: 3, column: 7 }], path: ['getUser', 'id'] },
+      { message: 'Failed auth policy check on name', locations: [{ line: 4, column: 7 }], path: ['getUser', 'name'] }
+    ]
+  })
+})
