@@ -36,7 +36,7 @@ async function createTestService (t, schema, resolvers = {}) {
       const chk = context.auth.identity.toUpperCase().split(',')
       if (!chk.includes(requires)) {
         if (info.fieldName === '_entities') {
-          throw new Error(`Failed auth policy check on ${info.variableValues.representations[0].__typename}`)
+          throw new Error(`Failed auth policy check on ${parent.__typename}`)
         }
         return false
       }
