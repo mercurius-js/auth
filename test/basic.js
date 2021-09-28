@@ -1036,3 +1036,146 @@ test('basic - should error for all fields in type', async (t) => {
     ]
   })
 })
+
+test('basic - should work at type level, entity query', async (t) => {
+  t.plan(2)
+
+  const schema = `
+    directive @auth(
+      requires: Role = ADMIN,
+    ) on OBJECT | FIELD_DEFINITION
+
+    enum Role {
+      ADMIN
+      REVIEWER
+      USER
+      UNKNOWN
+    }
+
+    type Query {
+      getUser: UserX
+    }
+
+    type UserX @auth(requires: USER) @key(fields: "id") {
+      id: Int
+      name: String
+      protected: String @auth(requires: ADMIN)
+    }`
+
+  const resolvers = {
+    Query: {
+      getUser: async (_, obj) => ({
+        id: 1,
+        name: 'testuser',
+        protected: 'protected data'
+      })
+    },
+    UserX: {
+      __resolveReference ({ id }) {
+        return {
+          id,
+          name: 'testuser'
+        }
+      }
+    }
+  }
+
+  const variables = {
+    representations: [
+      {
+        __typename: 'UserX',
+        id: 1
+      }
+    ]
+  }
+
+  const query = `query GetEntities($representations: [_Any!]!) {
+    _entities(representations: $representations) {
+      __typename
+      ... on UserX {
+        id
+        name
+      }
+    }
+  }`
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers,
+    federationMetadata: true
+  })
+  app.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user'].toUpperCase().split(',')
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      const findArg = (arg, ast) => {
+        let result
+        ast.arguments.forEach((a) => {
+          if (a.kind === 'Argument' &&
+            a.name.value === arg) {
+            result = a.value.value
+          }
+        })
+        return result
+      }
+      const requires = findArg('requires', authDirectiveAST)
+      return context.auth.identity.includes(requires)
+    },
+    authDirective: 'auth'
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-user': 'user' },
+    url: '/graphql',
+    body: JSON.stringify({ variables, query })
+  })
+
+  t.same(JSON.parse(response.body), {
+    data: {
+      _entities: [
+        {
+          __typename: 'UserX',
+          id: 1,
+          name: 'testuser'
+        }
+      ]
+    }
+  })
+
+  const responseBad = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-user': 'userx' },
+    url: '/graphql',
+    body: JSON.stringify({ variables, query })
+  })
+
+  t.same(JSON.parse(responseBad.body), {
+    data: {
+      _entities: [
+        null
+      ]
+    },
+    errors: [
+      {
+        message: 'Failed auth policy check on _entities',
+        locations: [
+          {
+            line: 2,
+            column: 5
+          }
+        ],
+        path: [
+          '_entities',
+          '0'
+        ]
+      }
+    ]
+  })
+})

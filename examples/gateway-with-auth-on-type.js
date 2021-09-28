@@ -11,6 +11,32 @@ async function createService (schema, resolvers = {}) {
     resolvers,
     federationMetadata: true
   })
+  service.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        identity: context.reply.request.headers['x-user']
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      const findArg = (arg, ast) => {
+        let result
+        ast.arguments.forEach((a) => {
+          if (a.kind === 'Argument' &&
+            a.name.value === arg) {
+            result = a.value.value
+          }
+        })
+        return result
+      }
+      const requires = findArg('requires', authDirectiveAST)
+      if (!context.auth.identity) {
+        return false
+      }
+      const chk = context.auth.identity.toUpperCase().split(',')
+      return chk.includes(requires)
+    },
+    authDirective: 'auth'
+  })
   await service.listen(0)
   return [service, service.server.address().port]
 }
@@ -53,7 +79,7 @@ const posts = {
   }
 }
 
-async function start (authOpts) {
+async function start () {
   // User service
   // note that we have a auth of USER on the User type and another auth of ADMIN on the name
   const userServiceSchema = `
@@ -150,40 +176,29 @@ async function start (authOpts) {
     gateway: {
       services: [{
         name: 'user',
-        url: `http://localhost:${userServicePort}/graphql`
+        url: `http://localhost:${userServicePort}/graphql`,
+        rewriteHeaders: (headers, context) => {
+          if (headers['x-user']) {
+            return {
+              'x-user': headers['x-user']
+            }
+          }
+          return null
+        }
       }, {
         name: 'post',
-        url: `http://localhost:${postServicePort}/graphql`
+        url: `http://localhost:${postServicePort}/graphql`,
+        rewriteHeaders: (headers, context) => {
+          if (headers['x-user']) {
+            return {
+              'x-user': headers['x-user']
+            }
+          }
+          return null
+        }
       }]
     },
     graphiql: true
-  })
-
-  gateway.register(mercuriusAuth, authOpts || {
-    authContext (context) {
-      return {
-        identity: context.reply.request.headers['x-user']
-      }
-    },
-    async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      const findArg = (arg, ast) => {
-        let result
-        ast.arguments.forEach((a) => {
-          if (a.kind === 'Argument' &&
-            a.name.value === arg) {
-            result = a.value.value
-          }
-        })
-        return result
-      }
-      const requires = findArg('requires', authDirectiveAST)
-      if (!context.auth.identity) {
-        return false
-      }
-      const chk = context.auth.identity.toUpperCase().split(',')
-      return chk.includes(requires)
-    },
-    authDirective: 'auth'
   })
 
   await gateway.listen(3000)
