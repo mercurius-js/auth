@@ -164,3 +164,20 @@ app.register(mercuriusAuth, {
 
 app.listen(3000)
 ```
+### Status Code
+Mercurius defaults all errors with the HTTP 500 status code. You can customize this property by using the built-in `ErrorWithProps` custom error provided by the underlining Mercurius plug-in
+
+```js
+...
+
+ async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    if (context.auth.identity !== 'admin') {
+      const err = new mercurius.ErrorWithProps(`custom auth error on ${info.fieldName}`);
+      err.statusCode = 200;
+      return err // or throw err
+    }
+    return true
+  }
+
+...
+```
