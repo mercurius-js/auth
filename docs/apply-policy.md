@@ -1,6 +1,21 @@
 # Apply Policy
 
-When called, the `applyPolicy` Promise provides the matching authDirective as a parameter in addition to exactly the same parameters that a `graphql-js` resolver will use. This allows us to tap into the auth directive definition and make policy decisions based on the associated type information.
+- [Directive mode](#directive-mode)
+- [External Policy mode](#external-policy-mode)
+
+When called, the `applyPolicy` Promise provides the matching policy as a parameter in addition to exactly the same parameters that a `graphql-js` resolver will use. This allows us to tap into the policy definition and make policy decisions based on the associated type information.
+
+The value of the policy parameter is dependent on the mode of operation:
+
+## Directive mode
+
+Here, the first parameter is the matching auth directive AST. This can be used to read the directive policy definition and apply accordingly.
+
+```js
+async applyPolicy (authDirectiveAST, parent, args, context, info) { ... }
+```
+
+**Example usage**:
 
 ```js
 'use strict'
@@ -53,6 +68,102 @@ app.register(mercuriusAuth, {
     return true
   },
   authDirective: 'auth'
+})
+
+app.listen(3000)
+```
+
+## External Policy mode
+
+Here, the first parameter is the matching policy for the field. This can be used to read the directive policy definition and apply accordingly.
+
+If we have the following policy:
+
+```js
+{
+  Message: {
+    __typePolicy: 'user',
+    adminMessage: 'admin'
+  },
+  Query: {
+    messages: 'user'
+  }
+}
+```
+
+Then when `applyPolicy` for `messages` is called, the value of `policy` argument is `'user'`.
+
+**Example usage**:
+
+```js
+'use strict'
+
+const Fastify = require('fastify')
+const mercurius = require('mercurius')
+const mercuriusAuth = require('..')
+
+const app = Fastify()
+
+const schema = `
+  type Message {
+    title: String
+    message: String
+    adminMessage: String
+  }
+
+  type Query {
+    messages: [Message]
+    message(title: String): Message
+  }
+`
+
+const messages = [
+  {
+    title: 'one',
+    message: 'one',
+    adminMessage: 'admin message one'
+  },
+  {
+    title: 'two',
+    message: 'two',
+    adminMessage: 'admin message two'
+  }
+]
+
+const resolvers = {
+  Query: {
+    messages: async (parent, args, context, info) => {
+      return messages
+    },
+    message: async (parent, args, context, info) => {
+      return messages.find(message => message.title === args.title)
+    }
+  }
+}
+
+app.register(mercurius, {
+  schema,
+  resolvers
+})
+
+app.register(mercuriusAuth, {
+  authContext (context) {
+    const permissions = context.reply.request.headers['x-user'] || ''
+    return { permissions }
+  },
+  async applyPolicy (policy, parent, args, context, info) {
+    return context.auth.permissions.includes(policy)
+  },
+  mode: 'external-policy',
+  policy: {
+    Message: {
+      __typePolicy: 'user',
+      adminMessage: 'admin'
+    },
+    Query: {
+      messages: 'user'
+    }
+  }
 })
 
 app.listen(3000)
