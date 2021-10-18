@@ -82,18 +82,18 @@ t.test('external policy', t => {
       },
       async applyPolicy (policy, parent, args, context, info) {
         t.ok(policy)
-        return context.auth.identity === policy
+        return context.auth.identity.includes(policy.requires)
       },
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         Wrong: {},
         Message: {
-          private: 'admin',
-          wrong: ''
+          private: { requires: 'admin' },
+          wrong: { requires: '' }
         },
         Query: {
-          add: 'admin',
-          adminMessages: 'admin'
+          add: { requires: 'admin' },
+          adminMessages: { requires: 'admin' }
         }
       }
     })
@@ -171,18 +171,18 @@ t.test('external policy', t => {
         }
       },
       async applyPolicy (policy, parent, args, context, info) {
-        return context.auth.identity === policy
+        return context.auth.identity.includes(policy.requires)
       },
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         Wrong: {},
         Message: {
-          private: 'admin',
-          wrong: ''
+          private: { requires: 'admin' },
+          wrong: { requires: '' }
         },
         Query: {
-          add: 'admin',
-          adminMessages: 'admin'
+          add: { requires: 'admin' },
+          adminMessages: { requires: 'admin' }
         }
       }
     })
@@ -304,16 +304,16 @@ t.test('external policy', t => {
         }
       },
       async applyPolicy (policy, parent, args, context, info) {
-        return context.auth.identity === policy
+        return context.auth.identity.includes(policy.requires)
       },
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         Message: {
-          private: 'admin',
-          title: 'admin'
+          private: { requires: 'admin' },
+          title: { requires: 'admin' }
         },
         Query: {
-          add: 'admin'
+          add: { requires: 'admin' }
         }
       }
     })
@@ -370,18 +370,18 @@ t.test('external policy', t => {
         }
       },
       async applyPolicy (policy, parent, args, context, info) {
-        return context.auth.identity === policy
+        return context.auth.identity.includes(policy.requires)
       },
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         Wrong: {},
         Message: {
-          private: 'admin',
-          wrong: ''
+          private: { requires: 'admin' },
+          wrong: { requires: '' }
         },
         Query: {
-          add: 'admin',
-          adminMessages: 'admin'
+          add: { requires: 'admin' },
+          adminMessages: { requires: 'admin' }
         }
       }
     })
@@ -643,12 +643,12 @@ t.test('external policy', t => {
         }
       },
       async applyPolicy (policy, parent, args, context, info) {
-        return context.auth.identity === policy
+        return context.auth.identity.includes(policy.requires)
       },
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         User: {
-          __typePolicy: 'admin'
+          __typePolicy: { requires: 'admin' }
         }
       }
     })
@@ -719,13 +719,13 @@ t.test('external policy', t => {
         }
       },
       async applyPolicy (policy, parent, args, context, info) {
-        return context.auth.identity === policy
+        return context.auth.identity.includes(policy.requires)
       },
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         User: {
-          __typePolicy: 'user',
-          protected: 'admin'
+          __typePolicy: { requires: 'user' },
+          protected: { requires: 'admin' }
         }
       }
     })
@@ -797,12 +797,12 @@ t.test('external policy', t => {
         }
       },
       async applyPolicy (policy, parent, args, context, info) {
-        return context.auth.identity === policy
+        return context.auth.identity.includes(policy.requires)
       },
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         User: {
-          __typePolicy: 'admin'
+          __typePolicy: { requires: 'admin' }
         }
       }
     })
@@ -894,13 +894,13 @@ t.test('external policy', t => {
         }
       },
       async applyPolicy (policy, parent, args, context, info) {
-        return context.auth.identity === policy
+        return context.auth.identity.includes(policy.requires)
       },
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         User: {
-          __typePolicy: 'user',
-          protected: 'admin'
+          __typePolicy: { requires: 'user' },
+          protected: { requires: 'admin' }
         }
       }
     })
@@ -926,7 +926,7 @@ t.test('external policy', t => {
 
     const responseBad = await app.inject({
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-user': 'user-x' },
+      headers: { 'content-type': 'application/json', 'x-user': 'guest' },
       url: '/graphql',
       body: JSON.stringify({ variables, query })
     })

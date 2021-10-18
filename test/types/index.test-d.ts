@@ -127,7 +127,7 @@ app.register(mercuriusAuth, {
     return true
   },
   authContext,
-  mode: 'external-policy',
+  mode: 'external',
   policy: {
     Message: {
       message: 'user'
@@ -150,7 +150,7 @@ app.register(mercuriusAuth, {
     return true
   },
   authContext,
-  mode: 'external-policy',
+  mode: 'external',
   policy: {
     Message: {
       __typePolicy: 'user',
@@ -180,7 +180,7 @@ const externalPolicyOptions: MercuriusAuthOptions<CustomParent, CustomArgs, Cust
     expectType<CustomContext>(context)
     return { identity: context.reply.request.headers['x-auth'] }
   },
-  mode: 'external-policy',
+  mode: 'external',
   policy: {
     Message: {
       __typePolicy: 'user',

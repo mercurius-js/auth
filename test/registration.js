@@ -152,7 +152,7 @@ test('registration - external policy', t => {
     })
     await t.rejects(app.register(mercuriusAuth, {
       applyPolicy: () => {},
-      mode: 'external-policy',
+      mode: 'external',
       policy: ''
     }), new MER_AUTH_ERR_INVALID_OPTS('opts.policy must be an object.'))
   })
@@ -169,7 +169,7 @@ test('registration - external policy', t => {
     })
     await t.rejects(app.register(mercuriusAuth, {
       applyPolicy: () => {},
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         Query: {
           add: { some: 'policy' }
@@ -191,7 +191,7 @@ test('registration - external policy', t => {
     })
     await app.register(mercuriusAuth, {
       applyPolicy: () => {},
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         Query: {
           add: { some: 'policy' }

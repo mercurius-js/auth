@@ -1180,7 +1180,7 @@ test('basic - should work at type level, entity query', async (t) => {
   })
 })
 
-test('basic - should be able to turn off directive based auth by setting mode to "external-policy"', async (t) => {
+test('basic - should be able to turn off directive based auth by setting mode to "external"', async (t) => {
   t.plan(1)
 
   const app = Fastify()
@@ -1200,7 +1200,7 @@ test('basic - should be able to turn off directive based auth by setting mode to
       return context.auth.identity === 'admin'
     },
     authDirective: 'auth',
-    mode: 'external-policy'
+    mode: 'external'
   })
 
   const query = `query {

@@ -97,7 +97,7 @@ app.listen(3000)
 
 ### External Policy mode
 
-Setup in External Policy mode as follows:
+Instead of using GraphQL Directives, you can implement an External Policy at plugin registration to protect GraphQL fields and types. You can find more information about implementing policy systems and how to build external policies for a GraphQL schema in the [External Policy documentation](docs/external-policy.md).
 
 ```js
 'use strict'
@@ -151,21 +151,31 @@ app.register(mercurius, {
 })
 
 app.register(mercuriusAuth, {
+  // Load the permissions into the context from the request headers
   authContext (context) {
     const permissions = context.reply.request.headers['x-user'] || ''
     return { permissions }
   },
   async applyPolicy (policy, parent, args, context, info) {
-    return context.auth.permissions.includes(policy)
+    // When called on field `Message.adminMessage`
+    // policy: { requires: 'admin' }
+    // context.auth.permissions: ['user', 'admin'] - the permissions associated with the user (passed as headers in authContext)
+    return context.auth.permissions.includes(policy.requires)
   },
-  mode: 'external-policy',
+  // Enable External Policy mode
+  mode: 'external',
   policy: {
+    // Associate policy with the 'Message' Object type
     Message: {
-      __typePolicy: 'user',
-      adminMessage: 'admin'
+      // Define policy for 'Message' Object type
+      __typePolicy: { requires: 'user' },
+      // Define policy for 'adminMessage' field
+      adminMessage: { requires: 'admin' }
     },
+    // Associate policy with the Query root type
     Query: {
-      messages: 'user'
+      // Define policy for 'message' Query
+      messages: { requires: 'user' }
     }
   }
 })

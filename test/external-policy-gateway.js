@@ -142,18 +142,18 @@ async function createTestGatewayServer (t, authOpts) {
       }
     },
     async applyPolicy (policy, parent, args, context, info) {
-      return context.auth.identity === policy
+      return context.auth.identity.includes(policy.requires)
     },
-    mode: 'external-policy',
+    mode: 'external',
     policy: {
       User: {
-        name: 'admin'
+        name: { requires: 'admin' }
       },
       Post: {
-        author: 'admin'
+        author: { requires: 'admin' }
       },
       Query: {
-        topPosts: 'admin'
+        topPosts: { requires: 'admin' }
       }
     }
   })
@@ -290,22 +290,22 @@ t.test('gateway - external policy', t => {
           identity: context.reply.request.headers['x-user']
         }
       },
-      async applyPolicy (authDirectiveAST, parent, args, context, info) {
-        if (context.auth.identity !== 'admin') {
+      async applyPolicy (policy, parent, args, context, info) {
+        if (!context.auth.identity.includes(policy.requires)) {
           return new Error(`custom auth error on ${info.fieldName}`)
         }
         return true
       },
-      mode: 'external-policy',
+      mode: 'external',
       policy: {
         User: {
-          name: 'admin'
+          name: { requires: 'admin' }
         },
         Post: {
-          author: 'admin'
+          author: { requires: 'admin' }
         },
         Query: {
-          topPosts: 'admin'
+          topPosts: { requires: 'admin' }
         }
       }
     })

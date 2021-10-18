@@ -80,18 +80,18 @@ Here, the first parameter is the matching policy for the field. This can be used
 If we have the following policy:
 
 ```js
-{
+const policy = {
   Message: {
-    __typePolicy: 'user',
-    adminMessage: 'admin'
+    __typePolicy: { requires: 'user' },
+    adminMessage: { requires: 'admin' }
   },
   Query: {
-    messages: 'user'
+    messages: { requires: 'user' }
   }
 }
 ```
 
-Then when `applyPolicy` for `messages` is called, the value of `policy` argument is `'user'`.
+Then when `applyPolicy` for `messages` is called, the value of `policy` argument is `{ requires: 'user' }`.
 
 **Example usage**:
 
@@ -152,16 +152,19 @@ app.register(mercuriusAuth, {
     return { permissions }
   },
   async applyPolicy (policy, parent, args, context, info) {
-    return context.auth.permissions.includes(policy)
+    // For field `Message.adminMessage`
+    // policy: { requires: 'admin' }
+    // context.auth.permissions: ['user', 'admin'] - the permissions associated with the user
+    return context.auth.permissions.includes(policy.requires)
   },
-  mode: 'external-policy',
+  mode: 'external',
   policy: {
     Message: {
-      __typePolicy: 'user',
-      adminMessage: 'admin'
+      __typePolicy: { requires: 'user' },
+      adminMessage: { requires: 'admin' }
     },
     Query: {
-      messages: 'user'
+      messages: { requires: 'user' }
     }
   }
 })

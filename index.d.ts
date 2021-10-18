@@ -20,7 +20,7 @@ export type MercuriusAuthPolicy = Record<string, MercuriusAuthTypePolicy>
 /**
  * The mode of operation for Mercurius Auth (default: 'directive').
  */
-export type MercuriusAuthMode = 'directive' | 'external-policy'
+export type MercuriusAuthMode = 'directive' | 'external'
 
 /**
  * The policy promise to run when an auth directive protected field is selected by the query.
@@ -68,7 +68,7 @@ export interface MercuriusAuthExternalPolicyOptions<TParent=any, TArgs=any, TCon
   /**
    * The External Policy mode of operation for Mercurius Auth.
    */
-  mode: 'external-policy';
+  mode: 'external';
   /**
    * The auth policy definitions used to protect the types and fields within a GraphQL schema.
    */

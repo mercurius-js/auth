@@ -155,19 +155,19 @@ async function createTestGatewayServer (t) {
       }
     },
     async applyPolicy (policy, parent, args, context, info) {
-      return policy.includes(context.auth.identity)
+      return policy.requires.includes(context.auth.identity)
     },
-    mode: 'external-policy',
+    mode: 'external',
     policy: {
       Query: {
-        me: ['admin'],
-        topPost: ['admin', 'user']
+        me: { requires: ['admin'] },
+        topPost: { requires: ['admin', 'user'] }
       },
       User: {
-        __typePolicy: ['admin']
+        __typePolicy: { requires: ['admin'] }
       },
       Post: {
-        __typePolicy: ['admin', 'user']
+        __typePolicy: { requires: ['admin', 'user'] }
       }
     }
   })

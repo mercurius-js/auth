@@ -8,13 +8,13 @@
 
 * **applyPolicy** `(policy: any, parent: object, args: Record<string, any>, context: MercuriusContext, info: GraphQLResolveInfo) => Promise<boolean | Error>` - the policy promise to run when an auth protected field is selected by the query. This must return `true` in order to pass the check and allow access to the protected field.
 * **authContext** `(context: MercuriusContext) => object | Promise<object>` (optional) - assigns the returned data to `MercuriusContext.auth` for use in the `applyPolicy` function. This runs within a [`preExecution`](https://mercurius.dev/#/docs/hooks?id=preexecution) Mercurius GraphQL request hook.
-* **mode** `'directive' | 'external-policy'` (optional, default: `'directive'`) - the mode of operation for the plugin. Depending on the mode of operation selected, this has the following options:
+* **mode** `'directive' | 'external'` (optional, default: `'directive'`) - the mode of operation for the plugin. Depending on the mode of operation selected, this has the following options:
 
 ### `directive` (default) mode
 
 * **authDirective** `string` - the name of the directive that the Mercurius auth plugin will look for within the GraphQL schema in order to identify protected fields. For example, for directive definition `directive @auth on OBJECT | FIELD_DEFINITION`, the corresponding name would be `auth`.
 
-### `external-policy` mode
+### `external` mode
 
 * **policy** `MercuriusAuthPolicy` (optional) - the auth policy definition. The field definition is passed as the first argument when `applyPolicy` is called for the associated field.
 
@@ -58,7 +58,7 @@ We would use the key: `message`:
 ```js
 {
   Message: {
-    message: 'user'
+    message: { requires: 'user' }
   }
 }
 ```
@@ -68,7 +68,7 @@ If we want to protect the entire type, we would use `__typePolicy`:
 ```js
 {
   Message: {
-    __typePolicy: 'user'
+    __typePolicy: { requires: 'user' }
   }
 }
 ```
@@ -78,8 +78,8 @@ This also works alongside specific field policies on the type:
 ```js
 {
   Message: {
-    __typePolicy: 'user',
-    message: 'admin'
+    __typePolicy: { requires: 'user', }
+    message: { requires: 'admin' }
   }
 }
 ```
@@ -201,16 +201,16 @@ app.register(mercuriusAuth, {
     return { permissions }
   },
   async applyPolicy (policy, parent, args, context, info) {
-    return context.auth.permissions.includes(policy)
+    return context.auth.permissions.includes(policy.requires)
   },
-  mode: 'external-policy',
+  mode: 'external',
   policy: {
     Message: {
-      __typePolicy: 'user',
-      adminMessage: 'admin'
+      __typePolicy: { requires: 'user' },
+      adminMessage: { requires: 'admin' }
     },
     Query: {
-      messages: 'user'
+      messages: { requires: 'user' }
     }
   }
 })

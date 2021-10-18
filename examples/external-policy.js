@@ -54,16 +54,16 @@ app.register(mercuriusAuth, {
     return { permissions }
   },
   async applyPolicy (policy, parent, args, context, info) {
-    return context.auth.permissions.includes(policy)
+    return context.auth.permissions.includes(policy.requires)
   },
-  mode: 'external-policy',
+  mode: 'external',
   policy: {
     Message: {
-      __typePolicy: 'user',
-      adminMessage: 'admin'
+      __typePolicy: { requires: 'user' },
+      adminMessage: { requires: 'admin' }
     },
     Query: {
-      messages: 'user'
+      messages: { requires: 'user' }
     }
   }
 })
