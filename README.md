@@ -17,12 +17,15 @@ Features:
 
 - [Install](#install)
 - [Quick Start](#quick-start)
+  - [Directive (default) mode](#directive-default-mode)
+  - [External Policy mode](#external-policy-mode)
 - [Examples](#examples)
 - [Benchmarks](#benchmarks)
 - [API](docs/api/options.md)
 - [Auth Context](docs/auth-context.md)
 - [Apply Policy](docs/apply-policy.md)
 - [Auth Directive](docs/auth-directive.md)
+- [External Policy](docs/external-policy.md)
 - [Errors](docs/errors.md)
 - [Federation](docs/federation.md)
 
@@ -33,6 +36,12 @@ npm i fastify mercurius mercurius-auth
 ```
 
 ## Quick Start
+
+We have two modes of operation for Mercurius Auth:
+
+### Directive (default) mode
+
+Setup in Directive mode as follows (this is the default mode of operation):
 
 ```js
 'use strict'
@@ -81,6 +90,94 @@ app.register(mercuriusAuth, {
     return context.auth.identity === 'admin'
   },
   authDirective: 'auth'
+})
+
+app.listen(3000)
+```
+
+### External Policy mode
+
+Instead of using GraphQL Directives, you can implement an External Policy at plugin registration to protect GraphQL fields and types. You can find more information about implementing policy systems and how to build external policies for a GraphQL schema in the [External Policy documentation](docs/external-policy.md).
+
+```js
+'use strict'
+
+const Fastify = require('fastify')
+const mercurius = require('mercurius')
+const mercuriusAuth = require('..')
+
+const app = Fastify()
+
+const schema = `
+  type Message {
+    title: String
+    message: String
+    adminMessage: String
+  }
+
+  type Query {
+    messages: [Message]
+    message(title: String): Message
+  }
+`
+
+const messages = [
+  {
+    title: 'one',
+    message: 'one',
+    adminMessage: 'admin message one'
+  },
+  {
+    title: 'two',
+    message: 'two',
+    adminMessage: 'admin message two'
+  }
+]
+
+const resolvers = {
+  Query: {
+    messages: async (parent, args, context, info) => {
+      return messages
+    },
+    message: async (parent, args, context, info) => {
+      return messages.find(message => message.title === args.title)
+    }
+  }
+}
+
+app.register(mercurius, {
+  schema,
+  resolvers
+})
+
+app.register(mercuriusAuth, {
+  // Load the permissions into the context from the request headers
+  authContext (context) {
+    const permissions = context.reply.request.headers['x-user'] || ''
+    return { permissions }
+  },
+  async applyPolicy (policy, parent, args, context, info) {
+    // When called on field `Message.adminMessage`
+    // policy: { requires: 'admin' }
+    // context.auth.permissions: ['user', 'admin'] - the permissions associated with the user (passed as headers in authContext)
+    return context.auth.permissions.includes(policy.requires)
+  },
+  // Enable External Policy mode
+  mode: 'external',
+  policy: {
+    // Associate policy with the 'Message' Object type
+    Message: {
+      // Define policy for 'Message' Object type
+      __typePolicy: { requires: 'user' },
+      // Define policy for 'adminMessage' field
+      adminMessage: { requires: 'admin' }
+    },
+    // Associate policy with the Query root type
+    Query: {
+      // Define policy for 'message' Query
+      messages: { requires: 'user' }
+    }
+  }
 })
 
 app.listen(3000)

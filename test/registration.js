@@ -57,7 +57,7 @@ test('registration - should error if authContext not a function', async (t) => {
   })
 
   try {
-    await app.register(mercuriusAuth, { authContext: '' })
+    await app.register(mercuriusAuth, { applyPolicy: () => {}, authDirective: 'auth', authContext: '' })
   } catch (error) {
     t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authContext must be a function.'))
   }
@@ -118,4 +118,86 @@ test('registration - should register the plugin', async (t) => {
     authDirective: 'auth'
   })
   t.ok('mercurius auth plugin is registered')
+})
+
+test('should error if mode is not a string', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  await t.rejects(app.register(mercuriusAuth, {
+    authContext: () => {},
+    applyPolicy: () => {},
+    mode: {}
+  }), new MER_AUTH_ERR_INVALID_OPTS('opts.mode must be a string.'))
+})
+
+test('registration - external policy', t => {
+  t.plan(3)
+
+  t.test('should error if policy is not an object', async (t) => {
+    t.plan(1)
+
+    const app = Fastify()
+    t.teardown(app.close.bind(app))
+
+    app.register(mercurius, {
+      schema,
+      resolvers
+    })
+    await t.rejects(app.register(mercuriusAuth, {
+      applyPolicy: () => {},
+      mode: 'external',
+      policy: ''
+    }), new MER_AUTH_ERR_INVALID_OPTS('opts.policy must be an object.'))
+  })
+
+  t.test('should error if policy type is not an object', async (t) => {
+    t.plan(1)
+
+    const app = Fastify()
+    t.teardown(app.close.bind(app))
+
+    app.register(mercurius, {
+      schema,
+      resolvers
+    })
+    await t.rejects(app.register(mercuriusAuth, {
+      applyPolicy: () => {},
+      mode: 'external',
+      policy: {
+        Query: {
+          add: { some: 'policy' }
+        },
+        wrong: 'string'
+      }
+    }), new MER_AUTH_ERR_INVALID_OPTS('opts.policy.wrong must be an object.'))
+  })
+
+  t.test('registration - should register the plugin', async (t) => {
+    t.plan(1)
+
+    const app = Fastify()
+    t.teardown(app.close.bind(app))
+
+    app.register(mercurius, {
+      schema,
+      resolvers
+    })
+    await app.register(mercuriusAuth, {
+      applyPolicy: () => {},
+      mode: 'external',
+      policy: {
+        Query: {
+          add: { some: 'policy' }
+        }
+      }
+    })
+    t.ok('mercurius auth plugin is registered')
+  })
 })
