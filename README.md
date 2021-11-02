@@ -104,7 +104,7 @@ Instead of using GraphQL Directives, you can implement an External Policy at plu
 
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
-const mercuriusAuth = require('..')
+const mercuriusAuth = require('mercurius-auth')
 
 const app = Fastify()
 
