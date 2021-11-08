@@ -183,9 +183,6 @@ app.register(mercuriusAuth, {
 app.listen(3000)
 ```
 
-
-Setup in Directive mode as follows (this is the default mode of operation):
-
 ## Examples
 
 Check [GitHub repo](https://github.com/mercurius-js/auth/tree/master/examples) for more examples.
