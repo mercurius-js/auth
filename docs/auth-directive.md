@@ -113,3 +113,78 @@ app.register(mercuriusAuth, {
 
 app.listen(3000)
 ```
+
+## Multiple Directives
+
+You can use multiple auth directives by registering the `mercurius-auth` plugin multiple times.
+
+You must know that all the `authContext` functions will be executed in the order they are registered.
+
+```js
+'use strict'
+
+const Fastify = require('fastify')
+const mercurius = require('mercurius')
+const mercuriusAuth = require('mercurius-auth')
+
+const app = Fastify()
+
+const schema = `
+  directive @hasRole(
+    type: String,
+  ) on FIELD_DEFINITION
+
+  directive @hasPermission(
+    grant: String,
+  ) on FIELD_DEFINITION
+
+  type Query {
+    read: [String] @hasPermission(grant: "read")
+  }
+
+  type Mutation {
+    publish(txt: String): Int @hasRole(type: "publisher") @hasPermission(grant: "write")
+  }
+`
+
+const resolvers = {
+  Query: {
+    read: async (_) => ['txt']
+  },
+  Mutation: {
+    publish: async (_, { txt }) => 42
+  }
+}
+
+app.register(mercurius, {
+  schema,
+  resolvers
+})
+
+app.register(mercuriusAuth, {
+  authContext (context) {
+    return {
+      role: context.reply.request.headers['x-role']
+    }
+  },
+  async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    return context.auth.role === 'publisher'
+  },
+  authDirective: 'hasRole'
+})
+
+app.register(mercuriusAuth, {
+  authContext (context) {
+    return {
+      permission: context.reply.request.headers['x-permission']
+    }
+  },
+  async applyPolicy (authDirectiveAST, parent, args, context, info) {
+    return context.auth.permission === authDirectiveAST
+      .arguments.find(arg => arg.name.value === 'grant').value.value
+  },
+  authDirective: 'hasPermission'
+})
+
+app.listen(3000)
+```
