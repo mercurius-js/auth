@@ -48,6 +48,7 @@
     "wait-on": "^6.0.0"
   },
   "dependencies": {
+    "@graphql-tools/utils": "^8.5.3",
     "fastify-error": "^0.3.0",
     "fastify-plugin": "^3.0.0",
     "graphql": "^15.4.0"

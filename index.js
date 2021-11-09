@@ -14,6 +14,8 @@ const plugin = fp(
     // Get auth policy
     const authSchema = auth.getPolicy(app.graphql.schema)
 
+    // console.log(app.graphql.schema)
+
     // Wrap resolvers with auth handlers
     auth.registerAuthHandlers(app.graphql.schema, authSchema)
 
@@ -26,6 +28,18 @@ const plugin = fp(
     if (typeof opts.authContext !== 'undefined') {
       app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
     }
+
+    app.graphql.addHook('preExecution', async function filterHook (schema, document, context) {
+      const filteredSchema = auth.filterDirectives(schema, authSchema, context)
+      return {
+        schema: filteredSchema
+      }
+    })
+
+    // app.graphql.addHook('onResolution', async (execution, context) => {
+    //   require('fs').writeFileSync('./exe.json', JSON.stringify(execution, null, 2))
+    //   return execution
+    // })
   },
   {
     name: 'mercurius-auth',
