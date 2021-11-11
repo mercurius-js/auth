@@ -1,6 +1,6 @@
 {
   "name": "mercurius-auth",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Mercurius Auth Plugin adds configurable Authentication and Authorization support to Mercurius.",
   "main": "index.js",
   "types": "index.d.ts",
@@ -33,8 +33,8 @@
     "@sinonjs/fake-timers": "^8.0.1",
     "@types/node": "^16.0.0",
     "@types/ws": "^8.2.0",
-    "@typescript-eslint/eslint-plugin": "^4.1.0",
-    "@typescript-eslint/parser": "^4.1.0",
+    "@typescript-eslint/eslint-plugin": "^5.3.1",
+    "@typescript-eslint/parser": "^5.3.1",
     "autocannon": "^7.0.5",
     "concurrently": "^6.1.0",
     "fastify": "^3.0.2",
