@@ -30,7 +30,7 @@ const plugin = fp(
     }
 
     app.graphql.addHook('preExecution', async function filterHook (schema, document, context) {
-      const filteredSchema = auth.filterDirectives(schema, authSchema, context)
+      const filteredSchema = await auth.filterDirectives(schema, authSchema, context)
       return {
         schema: filteredSchema
       }
