@@ -4,6 +4,8 @@ const fp = require('fastify-plugin')
 const Auth = require('./lib/auth')
 const { validateOpts } = require('./lib/validation')
 
+const kSchemaFilterHook = Symbol('schemaFilterHook')
+
 const plugin = fp(
   async function (app, opts) {
     validateOpts(opts)
@@ -13,8 +15,6 @@ const plugin = fp(
 
     // Get auth policy
     const authSchema = auth.getPolicy(app.graphql.schema)
-
-    // console.log(app.graphql.schema)
 
     // Wrap resolvers with auth handlers
     auth.registerAuthHandlers(app.graphql.schema, authSchema)
@@ -29,12 +29,15 @@ const plugin = fp(
       app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
     }
 
-    app.graphql.addHook('preExecution', async function filterHook (schema, document, context) {
-      const filteredSchema = await auth.filterDirectives(schema, authSchema, context)
-      return {
-        schema: filteredSchema
-      }
-    })
+    if (!app[kSchemaFilterHook]) {
+      app.graphql.addHook('preExecution', async function filterHook (schema, document, context) {
+        const filteredSchema = await auth.filterDirectives(schema, authSchema, context)
+        return {
+          schema: filteredSchema
+        }
+      })
+      app[kSchemaFilterHook] = true
+    }
 
     // app.graphql.addHook('onResolution', async (execution, context) => {
     //   require('fs').writeFileSync('./exe.json', JSON.stringify(execution, null, 2))
