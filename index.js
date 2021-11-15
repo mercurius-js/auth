@@ -31,6 +31,9 @@ const plugin = fp(
 
     if (!app[kSchemaFilterHook]) {
       app.graphql.addHook('preExecution', async function filterHook (schema, document, context) {
+        if (!isIntrospection(document)) {
+          return
+        }
         const filteredSchema = await auth.filterDirectives(schema, authSchema, context)
         return {
           schema: filteredSchema
@@ -38,11 +41,6 @@ const plugin = fp(
       })
       app[kSchemaFilterHook] = true
     }
-
-    // app.graphql.addHook('onResolution', async (execution, context) => {
-    //   require('fs').writeFileSync('./exe.json', JSON.stringify(execution, null, 2))
-    //   return execution
-    // })
   },
   {
     name: 'mercurius-auth',
@@ -52,3 +50,13 @@ const plugin = fp(
 )
 
 module.exports = plugin
+
+function isIntrospection (document) {
+  const queryTypes = document.definitions.filter(def => def.operation === 'query')
+  for (const qt of queryTypes) {
+    if (qt.selectionSet.selections.some(sel => sel.name.value === '__schema')) {
+      return true
+    }
+  }
+  return false
+}
