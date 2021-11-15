@@ -52,9 +52,14 @@ const plugin = fp(
 module.exports = plugin
 
 function isIntrospection (document) {
+  // TODO switch the logic: exit when one non-introspection operation is found
   const queryTypes = document.definitions.filter(def => def.operation === 'query')
   for (const qt of queryTypes) {
-    if (qt.selectionSet.selections.some(sel => sel.name.value === '__schema')) {
+    // TODO: __Schema, __Type, __TypeKind, __Field, __InputValue, __EnumValue, __Directive
+    if (qt.selectionSet.selections.some(sel => (
+      sel.name.value === '__schema' ||
+      sel.name.value === '__type'
+    ))) {
       return true
     }
   }
