@@ -147,6 +147,51 @@ test('should be able to access the query to determine that users have sufficient
           }
         }
       }
+    },
+    {
+      name: '@auth user with valid role queries using __schema',
+      query: queryListBySchema,
+      headers: {
+        'x-token': 'token',
+        'x-role': 'admin'
+      },
+      result: {
+        data: {
+          __schema: {
+            queryType: {
+              name: 'Query',
+              fields: [
+                { name: 'publicMessages' },
+                { name: 'semiPublicMessages' },
+                { name: 'privateMessages' },
+                { name: 'cryptoMessages' }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      name: '@auth user with INVALID role queries using __schema',
+      query: queryListBySchema,
+      headers: {
+        'x-token': 'token',
+        'x-role': 'viewer'
+      },
+      result: {
+        data: {
+          __schema: {
+            queryType: {
+              name: 'Query',
+              fields: [
+                { name: 'publicMessages' },
+                { name: 'semiPublicMessages' },
+                { name: 'cryptoMessages' }
+              ]
+            }
+          }
+        }
+      }
     }
   ].forEach(({ name, query, result, headers }) => {
     t.test(name, async t => {
@@ -180,5 +225,10 @@ function hasPermissionContext (context) {
   return { permission: context.reply.request.headers['x-permission'] }
 }
 async function hasPermissionPolicy (authDirectiveAST, parent, args, context, info) {
-  return context.auth.permission === authDirectiveAST.arguments.find(arg => arg.name.value === 'grant').value.value
+  const needed = authDirectiveAST.arguments.find(arg => arg.name.value === 'grant').value.value
+  const hasGrant = context.auth.permission === needed
+  if (!hasGrant) {
+    throw new Error(`Needed ${needed} grant`)
+  }
+  return true
 }
