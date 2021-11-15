@@ -142,7 +142,6 @@ test('should be able to access the query to determine that users have sufficient
             fields: [
               { name: 'publicMessages' },
               { name: 'semiPublicMessages' },
-              { name: 'privateMessages' }, // TODO should be filtered
               { name: 'cryptoMessages' }
             ]
           }

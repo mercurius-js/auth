@@ -29,18 +29,19 @@ const plugin = fp(
       app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
     }
 
-    if (!app[kSchemaFilterHook]) {
-      app.graphql.addHook('preExecution', async function filterHook (schema, document, context) {
-        if (!isIntrospection(document)) {
-          return
-        }
-        const filteredSchema = await auth.filterDirectives(schema, authSchema, context)
-        return {
-          schema: filteredSchema
-        }
-      })
-      app[kSchemaFilterHook] = true
-    }
+    // if (!app[kSchemaFilterHook]) {
+    app.graphql.addHook('preExecution', async function filterHook (schema, document, context) {
+      if (!isIntrospection(document)) {
+        // TODO check once if the document is introspection - now it's done for each directive
+        return
+      }
+      const filteredSchema = await auth.filterDirectives(schema, authSchema, context)
+      return {
+        schema: filteredSchema
+      }
+    })
+    app[kSchemaFilterHook] = true
+    // }
   },
   {
     name: 'mercurius-auth',
