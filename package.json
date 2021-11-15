@@ -38,7 +38,7 @@
     "autocannon": "^7.0.5",
     "concurrently": "^6.1.0",
     "fastify": "^3.0.2",
-    "mercurius": "^8.9.0",
+    "mercurius": "github:mercurius-js/mercurius#master",
     "pre-commit": "^1.2.2",
     "snazzy": "^9.0.0",
     "standard": "^16.0.3",
@@ -48,7 +48,6 @@
     "wait-on": "^6.0.0"
   },
   "dependencies": {
-    "@graphql-tools/utils": "^8.5.3",
     "@graphql-tools/wrap": "^8.3.2",
     "fastify-error": "^0.3.0",
     "fastify-plugin": "^3.0.0",
