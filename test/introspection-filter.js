@@ -3,6 +3,7 @@
 const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
+const { getIntrospectionQuery } = require('graphql')
 const mercuriusAuth = require('..')
 
 const schema = `
@@ -19,13 +20,22 @@ const schema = `
   type AdminMessage @hasRole(role: "admin") {
     title: String!
     message: String @auth
+    password: String @hasPermission(grant: "see-all-admin")
   }
+
+  type SimpleMessage {
+    title: String!
+    message: String @auth
+  }
+
+  union MessageUnion = AdminMessage | SimpleMessage
 
   type Query {
     publicMessages(org: String): [Message!]
     semiPublicMessages(org: String): [Message!] @auth
     privateMessages(org: String): [Message!] @auth @hasRole(role: "admin")
-    cryptoMessages(org: String): [AdminMessage!]
+    cryptoMessages(org: String): [MessageUnion!]
+    adminMessages(org: String): [AdminMessage!]
   }
 `
 
@@ -47,7 +57,8 @@ const resolvers = {
     publicMessages: async (parent, args, context, info) => { return messages },
     semiPublicMessages: async (parent, args, context, info) => { return messages },
     privateMessages: async (parent, args, context, info) => { return messages },
-    cryptoMessages: async (parent, args, context, info) => { return messages }
+    cryptoMessages: async (parent, args, context, info) => { return messages },
+    adminMessages: async (parent, args, context, info) => { return messages }
   }
 }
 
@@ -99,6 +110,15 @@ test('should be able to access the query to determine that users have sufficient
     }
   }`
 
+  const queryObjectMessage = `{
+    __type(name: "Message") {
+      name
+      fields {
+        name
+      }
+    }
+  }`
+
   ;[
     {
       name: 'simple not introspection query',
@@ -122,6 +142,8 @@ test('should be able to access the query to determine that users have sufficient
             fields: [
               { name: 'publicMessages' },
               { name: 'cryptoMessages' }
+              // notes that the adminMessages query is filtered out
+              // because we don't satisfy the AdminMessage @hasRole(role: "admin")
             ]
           }
         }
@@ -179,7 +201,8 @@ test('should be able to access the query to determine that users have sufficient
                 { name: 'publicMessages' },
                 { name: 'semiPublicMessages' },
                 { name: 'privateMessages' },
-                { name: 'cryptoMessages' }
+                { name: 'cryptoMessages' },
+                { name: 'adminMessages' }
               ]
             }
           }
@@ -207,6 +230,44 @@ test('should be able to access the query to determine that users have sufficient
           }
         }
       }
+    },
+    {
+      name: 'Message type with INVALID permission',
+      query: queryObjectMessage,
+      headers: {
+        'x-token': 'token',
+        'x-permission': 'none'
+      },
+      result: {
+        data: {
+          __type: {
+            name: 'Message',
+            fields: [
+              { name: 'title' },
+              { name: 'message' }
+            ]
+          }
+        }
+      }
+    },
+    {
+      name: 'Complete introspection query',
+      query: getIntrospectionQuery(),
+      headers: {
+        'x-token': 'token',
+        'x-role': 'not-an-admin',
+        'x-permission': 'see-all'
+      },
+      result (t, responseJson) {
+        t.plan(3)
+        const { types } = responseJson.data.__schema
+
+        t.notOk(types.find(type => type.name === 'AdminMessage'), 'the AdminMessage type has been filtered')
+
+        const objMessage = types.find(type => type.name === 'Message')
+        t.ok(objMessage, 'the Message type is present')
+        t.ok(objMessage.fields.find(field => field.name === 'password'), 'role is right')
+      }
     }
   ].forEach(({ name, query, result, headers }) => {
     t.test(name, async t => {
@@ -217,7 +278,14 @@ test('should be able to access the query to determine that users have sufficient
         url: '/graphql',
         body: JSON.stringify({ query })
       })
-      t.same(response.json(), result)
+
+      if (typeof result !== 'function') {
+        t.same(response.json(), result)
+      } else {
+        t.test('response', t => {
+          result(t, response.json())
+        })
+      }
     })
   })
 })
