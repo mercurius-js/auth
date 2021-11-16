@@ -133,6 +133,32 @@ test('should be able to access the query to determine that users have sufficient
       }
     },
     {
+      name: 'simple query with auth failing',
+      query: '{ semiPublicMessages { title } }',
+      result: {
+        data: { semiPublicMessages: null },
+        errors: [{
+          message: 'Failed auth policy check on semiPublicMessages',
+          locations: [{ line: 1, column: 3 }],
+          path: ['semiPublicMessages']
+        }]
+      }
+    },
+    {
+      name: 'simple query within an inspection query filter the schema and avoid triggering errors',
+      query: `{
+        __type(name:"Query"){ name }
+        semiPublicMessages { title }
+      }`,
+      result: {
+        data: {
+          __type: {
+            name: 'Query'
+          }
+        }
+      }
+    },
+    {
       name: 'filter @auth queries using __type',
       query: queryListByType,
       result: {
