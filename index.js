@@ -44,9 +44,15 @@ const plugin = fp(
       }
 
       if (app[kDirectiveNamespace][opts.namespace]) {
-        app[kDirectiveNamespace][opts.namespace].push({ authSchema, authFunction: opts.applyPolicy })
+        app[kDirectiveNamespace][opts.namespace].push({
+          policy: authSchema,
+          policyFunction: opts.applyPolicy
+        })
       } else {
-        app[kDirectiveNamespace][opts.namespace] = [{ authSchema, authFunction: opts.applyPolicy }]
+        app[kDirectiveNamespace][opts.namespace] = [{
+          policy: authSchema,
+          policyFunction: opts.applyPolicy
+        }]
       }
     }
   },
@@ -62,16 +68,12 @@ module.exports = plugin
 function filterGraphQLSchemaHook (namespace) {
   return async function filterHook (schema, document, context) {
     if (!isIntrospection(document)) {
-      // TODO check once if the document is introspection - now it's done for each directive
       return
     }
-    let filteredSchema = schema
-    const authSchemaArray = this[kDirectiveNamespace][namespace]
 
-    // TODO: merge the authSchema into one object and call filterSchema only once
-    for (const { authSchema, authFunction } of authSchemaArray) {
-      filteredSchema = await filterSchema(filteredSchema, authSchema, authFunction, context)
-    }
+    const filteredSchema = await filterSchema(schema,
+      this[kDirectiveNamespace][namespace],
+      context)
 
     return {
       schema: filteredSchema
