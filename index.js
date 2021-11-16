@@ -3,9 +3,7 @@
 const fp = require('fastify-plugin')
 const Auth = require('./lib/auth')
 const { validateOpts } = require('./lib/validation')
-const { filterSchema } = require('./lib/filter-schema')
-
-const kDirectiveNamespace = Symbol('mercurius-auth.namespace')
+const filterSchema = require('./lib/filter-schema')
 
 const plugin = fp(
   async function (app, opts) {
@@ -31,29 +29,7 @@ const plugin = fp(
     }
 
     if (opts.namespace && opts.authDirective) {
-      if (!app[kDirectiveNamespace]) {
-        app[kDirectiveNamespace] = {}
-
-        // the filter hook must be the last one to be executed (after all the authContextHook ones)
-        app.ready(err => {
-          // todo recreate this use case
-          /* istanbul ignore next */
-          if (err) throw err
-          app.graphql.addHook('preExecution', filterGraphQLSchemaHook(opts.namespace).bind(app))
-        })
-      }
-
-      if (app[kDirectiveNamespace][opts.namespace]) {
-        app[kDirectiveNamespace][opts.namespace].push({
-          policy: authSchema,
-          policyFunction: opts.applyPolicy
-        })
-      } else {
-        app[kDirectiveNamespace][opts.namespace] = [{
-          policy: authSchema,
-          policyFunction: opts.applyPolicy
-        }]
-      }
+      filterSchema(app, authSchema, opts)
     }
   },
   {
@@ -64,34 +40,3 @@ const plugin = fp(
 )
 
 module.exports = plugin
-
-function filterGraphQLSchemaHook (namespace) {
-  return async function filterHook (schema, document, context) {
-    if (!isIntrospection(document)) {
-      return
-    }
-
-    const filteredSchema = await filterSchema(schema,
-      this[kDirectiveNamespace][namespace],
-      context)
-
-    return {
-      schema: filteredSchema
-    }
-  }
-}
-
-function isIntrospection (document) {
-  // TODO switch the logic: exit when one non-introspection operation is found
-  const queryTypes = document.definitions.filter(def => def.operation === 'query')
-  for (const qt of queryTypes) {
-    // TODO: __Schema, __Type, __TypeKind, __Field, __InputValue, __EnumValue, __Directive
-    if (qt.selectionSet.selections.some(sel => (
-      sel.name.value === '__schema' ||
-      sel.name.value === '__type'
-    ))) {
-      return true
-    }
-  }
-  return false
-}

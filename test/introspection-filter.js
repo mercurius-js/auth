@@ -429,7 +429,7 @@ test('the single filter preExecution lets the app crash', async (t) => {
   })
 
   try {
-    await app.listen(0)
+    await app.ready()
   } catch (error) {
     t.equal(error.message, 'boom')
   }
