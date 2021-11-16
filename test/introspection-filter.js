@@ -37,6 +37,10 @@ const schema = `
     cryptoMessages(org: String): [MessageUnion!]
     adminMessages(org: String): [AdminMessage!]
   }
+
+  type Mutation {
+    createMessage(txt: String!): Boolean!
+  }
 `
 
 const queryListBySchema = `{
@@ -88,6 +92,9 @@ const resolvers = {
     privateMessages: async (parent, args, context, info) => { return messages },
     cryptoMessages: async (parent, args, context, info) => { return messages },
     adminMessages: async (parent, args, context, info) => { return messages }
+  },
+  Mutation: {
+    createMessage: async () => true
   }
 }
 
@@ -129,6 +136,15 @@ test('should be able to access the query to determine that users have sufficient
             { title: 'one' },
             { title: 'two' }
           ]
+        }
+      }
+    },
+    {
+      name: 'simple not introspection query',
+      query: 'mutation { createMessage(txt:"hello") }',
+      result: {
+        data: {
+          createMessage: true
         }
       }
     },
