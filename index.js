@@ -3,8 +3,9 @@
 const fp = require('fastify-plugin')
 const Auth = require('./lib/auth')
 const { validateOpts } = require('./lib/validation')
+const { filterSchema } = require('./lib/filter-schema')
 
-const kSchemaFilterHook = Symbol('schemaFilterHook')
+const kDirectiveNamespace = Symbol('mercurius-auth.namespace')
 
 const plugin = fp(
   async function (app, opts) {
@@ -29,19 +30,25 @@ const plugin = fp(
       app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
     }
 
-    // if (!app[kSchemaFilterHook]) {
-    app.graphql.addHook('preExecution', async function filterHook (schema, document, context) {
-      if (!isIntrospection(document)) {
-        // TODO check once if the document is introspection - now it's done for each directive
-        return
+    if (opts.namespace && opts.authDirective) {
+      if (!app[kDirectiveNamespace]) {
+        app[kDirectiveNamespace] = {}
+
+        // the filter hook must be the last one to be executed (after all the authContextHook ones)
+        app.ready(err => {
+          // todo recreate this use case
+          /* istanbul ignore next */
+          if (err) throw err
+          app.graphql.addHook('preExecution', filterGraphQLSchemaHook(opts.namespace).bind(app))
+        })
       }
-      const filteredSchema = await auth.filterDirectives(schema, authSchema, context)
-      return {
-        schema: filteredSchema
+
+      if (app[kDirectiveNamespace][opts.namespace]) {
+        app[kDirectiveNamespace][opts.namespace].push({ authSchema, authFunction: opts.applyPolicy })
+      } else {
+        app[kDirectiveNamespace][opts.namespace] = [{ authSchema, authFunction: opts.applyPolicy }]
       }
-    })
-    app[kSchemaFilterHook] = true
-    // }
+    }
   },
   {
     name: 'mercurius-auth',
@@ -51,6 +58,26 @@ const plugin = fp(
 )
 
 module.exports = plugin
+
+function filterGraphQLSchemaHook (namespace) {
+  return async function filterHook (schema, document, context) {
+    if (!isIntrospection(document)) {
+      // TODO check once if the document is introspection - now it's done for each directive
+      return
+    }
+    let filteredSchema = schema
+    const authSchemaArray = this[kDirectiveNamespace][namespace]
+
+    // TODO: merge the authSchema into one object and call filterSchema only once
+    for (const { authSchema, authFunction } of authSchemaArray) {
+      filteredSchema = await filterSchema(filteredSchema, authSchema, authFunction, context)
+    }
+
+    return {
+      schema: filteredSchema
+    }
+  }
+}
 
 function isIntrospection (document) {
   // TODO switch the logic: exit when one non-introspection operation is found

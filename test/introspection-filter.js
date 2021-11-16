@@ -63,16 +63,19 @@ test('should be able to access the query to determine that users have sufficient
   app.register(mercuriusAuth, {
     authContext: authContext,
     applyPolicy: authPolicy,
+    namespace: 'authorization-filtering',
     authDirective: 'auth'
   })
   app.register(mercuriusAuth, {
     authContext: hasRoleContext,
     applyPolicy: hasRolePolicy,
+    namespace: 'authorization-filtering',
     authDirective: 'hasRole'
   })
   app.register(mercuriusAuth, {
     authContext: hasPermissionContext,
     applyPolicy: hasPermissionPolicy,
+    namespace: 'authorization-filtering',
     authDirective: 'hasPermission'
   })
 
@@ -97,6 +100,18 @@ test('should be able to access the query to determine that users have sufficient
   }`
 
   ;[
+    {
+      name: 'simple not introspection query',
+      query: '{ publicMessages { title } }',
+      result: {
+        data: {
+          publicMessages: [
+            { title: 'one' },
+            { title: 'two' }
+          ]
+        }
+      }
+    },
     {
       name: 'filter @auth queries using __type',
       query: queryListByType,
@@ -205,6 +220,33 @@ test('should be able to access the query to determine that users have sufficient
       t.same(response.json(), result)
     })
   })
+})
+
+test('the single filter preExecution lets the app crash', async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+
+  app.register(mercuriusAuth, {
+    authContext: authContext,
+    applyPolicy: authPolicy,
+    namespace: 'authorization-filtering',
+    authDirective: 'auth'
+  })
+
+  app.register(async function plugin () {
+    throw new Error('boom')
+  })
+
+  try {
+    await app.listen(0)
+  } catch (error) {
+    t.equal(error.message, 'boom')
+  }
 })
 
 function authContext (context) {
