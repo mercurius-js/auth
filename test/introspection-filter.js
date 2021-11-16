@@ -39,6 +39,35 @@ const schema = `
   }
 `
 
+const queryListBySchema = `{
+  __schema {
+    queryType {
+      name
+      fields{
+        name
+      }
+    }
+  }
+}`
+
+const queryListByType = `{
+  __type(name:"Query"){
+    name
+    fields{
+      name
+    }
+  }
+}`
+
+const queryObjectMessage = `{
+  __type(name: "Message") {
+    name
+    fields {
+      name
+    }
+  }
+}`
+
 const messages = [
   {
     title: 'one',
@@ -89,35 +118,6 @@ test('should be able to access the query to determine that users have sufficient
     namespace: 'authorization-filtering',
     authDirective: 'hasPermission'
   })
-
-  const queryListBySchema = `{
-    __schema {
-      queryType {
-        name
-        fields{
-          name
-        }
-      }
-    }
-  }`
-
-  const queryListByType = `{
-    __type(name:"Query"){
-      name
-      fields{
-        name
-      }
-    }
-  }`
-
-  const queryObjectMessage = `{
-    __type(name: "Message") {
-      name
-      fields {
-        name
-      }
-    }
-  }`
 
   ;[
     {
@@ -267,6 +267,124 @@ test('should be able to access the query to determine that users have sufficient
         const objMessage = types.find(type => type.name === 'Message')
         t.ok(objMessage, 'the Message type is present')
         t.ok(objMessage.fields.find(field => field.name === 'password'), 'role is right')
+      }
+    }
+  ].forEach(({ name, query, result, headers }) => {
+    t.test(name, async t => {
+      t.plan(1)
+      const response = await app.inject({
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        url: '/graphql',
+        body: JSON.stringify({ query })
+      })
+
+      if (typeof result !== 'function') {
+        t.same(response.json(), result)
+      } else {
+        t.test('response', t => {
+          result(t, response.json())
+        })
+      }
+    })
+  })
+})
+
+test('UNION check filtering', async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @unionCheck on UNION | FIELD_DEFINITION
+
+    type Message {
+      title: String!
+      password: String @unionCheck
+    }
+
+    type SimpleMessage {
+      title: String!
+      message: String
+    }
+
+    union MessageUnion @unionCheck = Message | SimpleMessage
+  
+    type Query {
+      publicMessages(org: String): [MessageUnion!]
+    }
+    `
+  })
+
+  app.register(mercuriusAuth, {
+    applyPolicy: async function hasRolePolicy (authDirectiveAST, parent, args, context, info) {
+      return context.reply.request.headers['x-union'] === 'show'
+    },
+    namespace: 'authorization-filtering',
+    authDirective: 'unionCheck'
+  })
+
+  ;[
+    {
+      name: 'show UNION type',
+      query: queryListByType,
+      headers: {
+        'x-union': 'show'
+      },
+      result: {
+        data: {
+          __type: {
+            name: 'Query',
+            fields: [
+              { name: 'publicMessages' }
+            ]
+          }
+        }
+      }
+    },
+    {
+      name: 'hide UNION type',
+      query: queryListByType,
+      headers: {
+        'x-union': 'hide'
+      },
+      result: {
+        data: {
+          __type: {
+            name: 'Query',
+            fields: []
+          }
+        }
+      }
+    },
+    {
+      name: 'show UNION type',
+      query: queryObjectMessage,
+      headers: {
+        'x-union': 'show'
+      },
+      result: {
+        data: {
+          __type: {
+            name: 'Message',
+            fields: [
+              { name: 'title' },
+              { name: 'password' }
+            ]
+          }
+        }
+      }
+    },
+    {
+      name: 'hide UNION type - cannot access to this type',
+      query: queryObjectMessage,
+      headers: {
+        'x-union': 'hide'
+      },
+      result: {
+        data: {
+          __type: null
+        }
       }
     }
   ].forEach(({ name, query, result, headers }) => {
