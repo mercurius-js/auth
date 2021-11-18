@@ -477,6 +477,119 @@ test('the single filter preExecution lets the app crash', async (t) => {
   }
 })
 
+test("check directive's arguments on FIELD_DEFINITION", async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @auth on FIELD_DEFINITION
+
+    type Query {
+      publicMessages: [String!] @auth
+    }
+    `,
+    resolvers: {
+      Query: {
+        publicMessages: async (parent, args, context, info) => {
+          return ['messages']
+        }
+      }
+    }
+  })
+
+  let schemaFilteringRun
+  app.register(mercuriusAuth, {
+    applyPolicy: async function (authDirectiveAST, parent, args, context, info) {
+      if (!schemaFilteringRun) {
+        // this is the schema filtering execution
+        schemaFilteringRun = { authDirectiveAST, parent, args, context, info }
+      } else {
+        t.same(schemaFilteringRun.authDirectiveAST, authDirectiveAST, 'authDirectiveAST')
+        t.notOk(schemaFilteringRun.parent, 'parent')
+        t.notOk(schemaFilteringRun.args, 'args')
+        t.same(schemaFilteringRun.context, context, 'context')
+        // t.same(schemaFilteringRun.info, info, 'info', { skip: 1, todo: 1 })
+      }
+      return true
+    },
+    namespace: 'authorization-filtering',
+    authDirective: 'auth'
+  })
+
+  const query = `{
+    __type(name:"Query"){ name }
+    publicMessages
+  }`
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+  t.equal(response.statusCode, 200)
+  t.notOk(response.json().errors)
+})
+
+test("check directive's arguments on OBJECT", async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @auth on OBJECT
+
+    type Message {
+      message: String!
+    }
+    type Query @auth{
+      publicMessages: [Message!]
+    }
+    `,
+    resolvers: {
+      Query: {
+        publicMessages: async (parent, args, context, info) => {
+          return messages
+        }
+      }
+    }
+  })
+
+  let schemaFilteringRun
+  app.register(mercuriusAuth, {
+    applyPolicy: async function (authDirectiveAST, parent, args, context, info) {
+      if (!schemaFilteringRun) {
+        // this is the schema filtering execution
+        schemaFilteringRun = { authDirectiveAST, parent, args, context, info }
+      } else {
+        t.same(schemaFilteringRun.authDirectiveAST, authDirectiveAST, 'authDirectiveAST')
+        t.notOk(schemaFilteringRun.parent, 'parent')
+        t.notOk(schemaFilteringRun.args, 'args')
+        t.same(schemaFilteringRun.context, context, 'context')
+        // t.same(schemaFilteringRun.info, info, 'info', { skip: 1 })
+      }
+      return true
+    },
+    namespace: 'authorization-filtering',
+    authDirective: 'auth'
+  })
+
+  const query = `{
+    __type(name:"Query"){ name }
+    publicMessages { message }
+  }`
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+  t.equal(response.statusCode, 200)
+  t.notOk(response.json().errors)
+})
+
 function authContext (context) {
   return { token: context.reply.request.headers['x-token'] || false }
 }
