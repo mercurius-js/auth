@@ -37,6 +37,7 @@ const resolvers = {
   }
 }
 
+const app = Fastify()
 app.register(mercurius, {
   schema,
   resolvers
