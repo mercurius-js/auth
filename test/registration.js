@@ -138,7 +138,7 @@ test('should error if mode is not a string', async (t) => {
 })
 
 test('registration - external policy', t => {
-  t.plan(3)
+  t.plan(4)
 
   t.test('should error if policy is not an object', async (t) => {
     t.plan(1)
@@ -199,5 +199,22 @@ test('registration - external policy', t => {
       }
     })
     t.ok('mercurius auth plugin is registered')
+  })
+
+  t.test('cannot filter introspection schema on external mode', async (t) => {
+    t.plan(1)
+
+    const app = Fastify()
+    t.teardown(app.close.bind(app))
+
+    app.register(mercurius, {
+      schema,
+      resolvers
+    })
+    await t.rejects(app.register(mercuriusAuth, {
+      applyPolicy: () => {},
+      mode: 'external',
+      filterSchema: true
+    }), new MER_AUTH_ERR_INVALID_OPTS('opts.filterSchema cannot be used when mode is external.'))
   })
 })

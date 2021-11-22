@@ -110,19 +110,19 @@ test('should be able to access the query to determine that users have sufficient
   app.register(mercuriusAuth, {
     authContext: authContext,
     applyPolicy: authPolicy,
-    namespace: 'authorization-filtering',
+    filterSchema: true,
     authDirective: 'auth'
   })
   app.register(mercuriusAuth, {
     authContext: hasRoleContext,
     applyPolicy: hasRolePolicy,
-    namespace: 'authorization-filtering',
+    filterSchema: true,
     authDirective: 'hasRole'
   })
   app.register(mercuriusAuth, {
     authContext: hasPermissionContext,
     applyPolicy: hasPermissionPolicy,
-    namespace: 'authorization-filtering',
+    filterSchema: true,
     authDirective: 'hasPermission'
   })
 
@@ -362,7 +362,7 @@ test('UNION check filtering', async (t) => {
     applyPolicy: async function hasRolePolicy (authDirectiveAST, parent, args, context, info) {
       return context.reply.request.headers['x-union'] === 'show'
     },
-    namespace: 'authorization-filtering',
+    filterSchema: true,
     authDirective: 'unionCheck'
   })
 
@@ -462,7 +462,7 @@ test('the single filter preExecution lets the app crash', async (t) => {
   app.register(mercuriusAuth, {
     authContext: authContext,
     applyPolicy: authPolicy,
-    namespace: 'authorization-filtering',
+    filterSchema: true,
     authDirective: 'auth'
   })
 
@@ -513,7 +513,7 @@ test("check directive's arguments on FIELD_DEFINITION", async (t) => {
       }
       return true
     },
-    namespace: 'authorization-filtering',
+    filterSchema: true,
     authDirective: 'auth'
   })
 
@@ -571,7 +571,7 @@ test("check directive's arguments on OBJECT", async (t) => {
       }
       return true
     },
-    namespace: 'authorization-filtering',
+    filterSchema: true,
     authDirective: 'auth'
   })
 

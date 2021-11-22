@@ -4,7 +4,7 @@ Using mercurius you can optionally filter the GraphQL schema based on the user's
 This feature limits the [Introspection queries](https://graphql.org/learn/introspection/) visibility.
 Doing so, the user will only be able to see the fields that are accessible to them.
 
-To enable this feature, you can use the `namespace` plugin's option:
+To enable this feature, you can use the `filterSchema` plugin's option:
 
 ```js
 const Fastify = require('fastify')
@@ -32,7 +32,7 @@ app.register(mercurius, {
 })
 
 app.register(mercuriusAuth, {
-  namespace: 'introspection-filtering',
+  filterSchema: true,
   authDirective: 'hasPermission',
   authContext: function (context) {
     return { permission: context.reply.request.headers['x-permission'] }

@@ -28,7 +28,7 @@ const plugin = fp(
       app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
     }
 
-    if (opts.namespace && opts.authDirective) {
+    if (opts.filterSchema === true) {
       filterSchema(app, authSchema, opts)
     }
   },
