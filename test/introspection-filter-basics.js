@@ -14,6 +14,15 @@ const queryObjectMessage = `{
   }
 }`
 
+const queryListByType = `{
+  __type(name:"Query"){
+    name
+    fields{
+      name
+    }
+  }
+}`
+
 const queryArguments = `{
   __type(name: "Query") {
     name
@@ -34,6 +43,36 @@ const queryListAll = `{
     }
   }
 }`
+
+const queryEnumValues = `{
+  __type(name: "Role") {
+    kind
+    name
+    enumValues {
+      name
+    }
+  }
+}`
+
+const queryInputFields = `{
+  __type(name: "Query") {
+    kind
+    name
+    fields {
+      name
+      args {
+        name
+        type {
+          name
+          inputFields {
+            name
+          }
+        }
+      }
+    }
+  }
+}
+`
 
 test('TypeSystemDirectiveLocation: OBJECT', async (t) => {
   t.plan(3)
@@ -172,6 +211,288 @@ test('TypeSystemDirectiveLocation: INTERFACE', async (t) => {
     body: JSON.stringify({ query: queryListAll })
   })
   t.notOk(response.json().data.__schema.types.find(({ name }) => name === 'BasicMessage'), 'should not have BasicMessage')
+  checkInternals(t, app, { directives: 1 })
+})
+
+test('TypeSystemDirectiveLocation: UNION', async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @unionCheck on UNION | FIELD_DEFINITION
+
+    type Message {
+      title: String!
+      password: String @unionCheck
+    }
+
+    type SimpleMessage {
+      title: String!
+      message: String
+    }
+
+    union MessageUnion @unionCheck = Message | SimpleMessage
+  
+    type Query {
+      publicMessages(org: String): [MessageUnion!]
+    }
+    `
+  })
+
+  app.register(mercuriusAuth, {
+    applyPolicy: async function hasRolePolicy (authDirectiveAST, parent, args, context, info) {
+      return context.reply.request.headers['x-union'] === 'show'
+    },
+    filterSchema: true,
+    authDirective: 'unionCheck'
+  })
+
+  ;[
+    {
+      name: 'show UNION type',
+      query: queryListByType,
+      headers: {
+        'x-union': 'show'
+      },
+      result: {
+        data: {
+          __type: {
+            name: 'Query',
+            fields: [
+              { name: 'publicMessages' }
+            ]
+          }
+        }
+      }
+    },
+    {
+      name: 'hide UNION type',
+      query: queryListByType,
+      headers: {
+        'x-union': 'hide'
+      },
+      result: {
+        data: {
+          __type: {
+            name: 'Query',
+            fields: []
+          }
+        }
+      }
+    },
+    {
+      name: 'show UNION type',
+      query: queryObjectMessage,
+      headers: {
+        'x-union': 'show'
+      },
+      result: {
+        data: {
+          __type: {
+            name: 'Message',
+            fields: [
+              { name: 'title' },
+              { name: 'password' }
+            ]
+          }
+        }
+      }
+    },
+    {
+      name: 'hide UNION type - cannot access to this type',
+      query: queryObjectMessage,
+      headers: {
+        'x-union': 'hide'
+      },
+      result: {
+        data: {
+          __type: null
+        }
+      }
+    }
+  ].forEach(({ name, query, result, headers }) => {
+    t.test(name, async t => {
+      t.plan(1)
+      const response = await app.inject({
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        url: '/graphql',
+        body: JSON.stringify({ query })
+      })
+
+      if (typeof result !== 'function') {
+        t.same(response.json(), result)
+      } else {
+        t.test('response', t => {
+          result(t, response.json())
+        })
+      }
+    })
+  })
+})
+
+test('TypeSystemDirectiveLocation: ENUM_VALUE', { todo: 'not supported. Need TransformEnumValues' }, async (t) => {
+  t.plan(3)
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @hideMe on ENUM_VALUE
+
+    enum Role {
+      ADMIN
+      REVIEWER
+      USER
+      SECRET @hideMe
+    }
+
+    type Query {
+      publicMessages(org: String): [String!]
+    }
+    `
+  })
+
+  app.register(mercuriusAuth, {
+    filterSchema: true,
+    authDirective: 'hideMe',
+    applyPolicy: async () => {
+      t.pass('should be called on an introspection query')
+      return false
+    }
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query: queryEnumValues })
+  })
+
+  require('fs').writeFileSync('./asd.json', JSON.stringify(response.json(), null, 2))
+
+  t.same(response.json(), {
+    data: {
+      __type: {
+        kind: 'ENUM',
+        name: 'Role',
+        enumValues: [
+          { name: 'ADMIN' },
+          { name: 'REVIEWER' },
+          { name: 'USER' }
+        ]
+      }
+    }
+  })
+
+  checkInternals(t, app, { directives: 1 })
+})
+
+test('TypeSystemDirectiveLocation: INPUT_OBJECT', async (t) => {
+  t.plan(3)
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @hideMe on INPUT_OBJECT
+
+    input MessageInput @hideMe {
+      message: String
+      password: String
+    }
+
+    type Query {
+      publicMessages(org: MessageInput): [String!]
+    }
+    `
+  })
+
+  app.register(mercuriusAuth, {
+    filterSchema: true,
+    authDirective: 'hideMe',
+    applyPolicy: async () => {
+      t.pass('should be called on an introspection query')
+      return false
+    }
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query: queryInputFields })
+  })
+
+  t.same(response.json(), {
+    data: {
+      __type: {
+        kind: 'OBJECT',
+        name: 'Query',
+        fields: [
+          {
+            name: 'publicMessages',
+            args: []
+          }
+        ]
+      }
+    }
+  })
+
+  checkInternals(t, app, { directives: 1 })
+})
+
+test('TypeSystemDirectiveLocation: INPUT_FIELD_DEFINITION', async (t) => {
+  t.plan(3)
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @hideMe on INPUT_FIELD_DEFINITION
+
+    input MessageInput {
+      message: String!
+      password: String @hideMe
+    }
+
+    type Query {
+      publicMessages(org: MessageInput): [String!]
+    }`
+  })
+
+  app.register(mercuriusAuth, {
+    filterSchema: true,
+    authDirective: 'hideMe',
+    applyPolicy: async () => {
+      t.pass('should be called on an introspection query')
+      return false
+    }
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query: queryInputFields })
+  })
+
+  t.same(response.json(), {
+    data: {
+      __type: {
+        kind: 'OBJECT',
+        name: 'Query',
+        fields: [
+          {
+            name: 'publicMessages',
+            args: []
+          }
+        ]
+      }
+    }
+  })
+
   checkInternals(t, app, { directives: 1 })
 })
 

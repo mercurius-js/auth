@@ -95,7 +95,7 @@ Adding the Request Headers as follows:
 
 Will make the user able to see the `notes` field.
 
-### Implementations details
+## Implementations details
 
 You must be informed about some details about the filtering feature.
 
@@ -117,3 +117,12 @@ You must be informed about some details about the filtering feature.
   }
 }
 ```
+
+### Special usages
+
+Depending on the [`DirectiveLocations`](https://github.com/graphql/graphql-spec/blob/main/spec/Section%203%20--%20Type%20System.md#directives) you will have two main behaviors:
+
+- The normal behaviour is when the `DirectiveLocations` is hidden from the introspection query.
+- The augmented behaviour is when the schema has additional hidden entities from the introspection query. It happens when:
+  - The directive is `on INPUT_FIELD_DEFINITION`: the whole `input` item is hidden
+  - The `Query` is hidden if the user doesn't have access to the `input` or `output` object types.
