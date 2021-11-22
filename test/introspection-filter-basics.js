@@ -14,6 +14,167 @@ const queryObjectMessage = `{
   }
 }`
 
+const queryArguments = `{
+  __type(name: "Query") {
+    name
+    fields {
+      name
+      args {
+        name
+      }
+    }
+  }
+}`
+
+const queryListAll = `{
+  __schema {
+    types {
+      name
+      kind
+    }
+  }
+}`
+
+test('TypeSystemDirectiveLocation: OBJECT', async (t) => {
+  t.plan(3)
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @hideMe on OBJECT
+
+    type Message @hideMe {
+      message: String
+      password: String
+    }
+
+    type Query {
+      publicMessages(org: String): [Message!]
+    }
+    `
+  })
+
+  app.register(mercuriusAuth, {
+    filterSchema: true,
+    authDirective: 'hideMe',
+    applyPolicy: async () => {
+      t.pass('should be called on an introspection query')
+      return false
+    }
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query: queryObjectMessage })
+  })
+
+  t.same(response.json(), {
+    data: {
+      __type: null
+    }
+  })
+
+  checkInternals(t, app, { directives: 1 })
+})
+
+test('TypeSystemDirectiveLocation: ARGUMENT_DEFINITION', { todo: 'not supported. Need FilterInputObjectFields' }, async (t) => {
+  t.plan(3)
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @hideMe on ARGUMENT_DEFINITION
+
+    type Message {
+      message: String
+      password: String
+    }
+
+    type Query {
+      publicMessages(org: String @hideMe): [Message!]
+    }`
+  })
+
+  app.register(mercuriusAuth, {
+    filterSchema: true,
+    authDirective: 'hideMe',
+    applyPolicy: async () => {
+      t.pass('should be called on an introspection query')
+      return false
+    }
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query: queryArguments })
+  })
+
+  t.same(response.json(), {
+    data: {
+      __type: {
+        name: 'Query',
+        fields: [
+          {
+            name: 'publicMessages',
+            args: null
+          }
+        ]
+      }
+    }
+  })
+
+  checkInternals(t, app, { directives: 1 })
+})
+
+test('TypeSystemDirectiveLocation: INTERFACE', async (t) => {
+  t.plan(3)
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @hideMe on INTERFACE
+
+    interface BasicMessage @hideMe {
+      message: String
+    }
+
+    type Message implements BasicMessage {
+      title: String
+      message: String
+    }
+
+    type Query {
+      publicMessages(org: String): [Message!]
+    }
+    `
+  })
+
+  app.register(mercuriusAuth, {
+    filterSchema: true,
+    authDirective: 'hideMe',
+    applyPolicy: async () => {
+      t.pass('should be called on an introspection query')
+      return false
+    }
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query: queryListAll })
+  })
+  t.notOk(response.json().data.__schema.types.find(({ name }) => name === 'BasicMessage'), 'should not have BasicMessage')
+  checkInternals(t, app, { directives: 1 })
+})
+
 test('mixed directives: one filtered out and one not', async (t) => {
   t.plan(3)
   const app = Fastify()
