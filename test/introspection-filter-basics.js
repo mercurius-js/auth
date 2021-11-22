@@ -153,6 +153,57 @@ test('multiple filtered directives on different contexts', async (t) => {
   checkInternals(t, app, { directives: 3 })
 })
 
+test('repeatable directive', async (t) => {
+  t.plan(4)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @counter repeatable on FIELD_DEFINITION
+
+    type Message {
+      title: String
+      message: String @counter @counter @counter
+    }
+
+    type Query {
+      publicMessages(org: String): [Message!]
+    }`
+  })
+
+  app.register(mercuriusAuth, {
+    filterSchema: true,
+    authDirective: 'counter',
+    applyPolicy: async () => {
+      t.pass('should be called once')
+      t.todo('should be called three times but repeatable directives are not supported')
+      return false
+    }
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query: queryObjectMessage })
+  })
+
+  t.same(response.json(), {
+    data: {
+      __type: {
+        name: 'Message',
+        fields: [
+          { name: 'title' }
+        ]
+      }
+    }
+  })
+
+  checkInternals(t, app, { directives: 1 })
+})
+
 function checkInternals (t, app, { directives }) {
   const checkGrouping = Object.getOwnPropertySymbols(app)
   const groupSym = checkGrouping.find(sym => sym.toString().includes('mercurius-auth.filtering.group'))
