@@ -14,8 +14,7 @@
 
 * **authDirective** `string` - the name of the directive that the Mercurius auth plugin will look for within the GraphQL schema in order to identify protected fields. For example, for directive definition `directive @auth on OBJECT | FIELD_DEFINITION`, the corresponding name would be `auth`.
 
-* **filterSchema** `boolean` - when `true` the GraphQL elements within the directive will be filtered during [Introspection queries](https://graphql.org/learn/introspection/) if the `applyPolicy` function will not be satisfied by the HTTP Request.
-
+* **filterSchema** `boolean` - when `true`, [introspection queries](https://graphql.org/learn/introspection/) will only return the parts of the schema which are accessible based on the applied policies.
 ### `external` mode
 
 * **policy** `MercuriusAuthPolicy` (optional) - the auth policy definition. The field definition is passed as the first argument when `applyPolicy` is called for the associated field.
