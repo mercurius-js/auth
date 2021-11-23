@@ -62,6 +62,10 @@ export interface MercuriusAuthDirectiveOptions<TParent=any, TArgs=any, TContext=
    * The name of the directive that the Mercurius auth plugin will look for within the GraphQL schema in order to identify protected fields. For example, for directive definition `directive @auth on OBJECT | FIELD_DEFINITION`, the corresponding name would be auth.
    */
   authDirective: string;
+  /**
+   * When set to true, the plugin will automatically hide the auth directive to the GraphQL schema if the policy is not satisfated.
+   */
+  filterSchema?: boolean;
 }
 
 export interface MercuriusAuthExternalPolicyOptions<TParent=any, TArgs=any, TContext=MercuriusContext, TPolicy=any> extends MercuriusAuthBaseOptions<TParent, TArgs, TContext, TPolicy> {
