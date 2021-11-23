@@ -22,6 +22,9 @@ const plugin = fp(
     app.graphql.addHook('onGatewayReplaceSchema', async (instance, schema) => {
       const authSchema = auth.getPolicy(schema)
       auth.registerAuthHandlers(schema, authSchema)
+      if (opts.filterSchema === true) {
+        filterSchema.updatePolicy(app, authSchema, opts)
+      }
     })
 
     if (typeof opts.authContext !== 'undefined') {
