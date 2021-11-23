@@ -422,10 +422,10 @@ test("check directive's arguments on OBJECT", async (t) => {
     schema: `
     directive @auth on OBJECT
 
-    type Message @auth {
+    type Message {
       message: String!
     }
-    type Query {
+    type Query @auth {
       publicMessages: [Message!]
     }
     `,
