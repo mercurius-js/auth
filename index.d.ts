@@ -63,7 +63,7 @@ export interface MercuriusAuthDirectiveOptions<TParent=any, TArgs=any, TContext=
    */
   authDirective: string;
   /**
-   * When set to true, the plugin will automatically hide the auth directive to the GraphQL schema if the policy is not satisfated.
+   * When set to true, the plugin will automatically filter the output Schema during Introspection queries if the applyPolicy function is not satisfated.
    */
   filterSchema?: boolean;
 }
