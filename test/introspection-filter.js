@@ -422,10 +422,10 @@ test("check directive's arguments on OBJECT", async (t) => {
     schema: `
     directive @auth on OBJECT
 
-    type Message {
+    type Message @auth {
       message: String!
     }
-    type Query @auth{
+    type Query {
       publicMessages: [Message!]
     }
     `,
@@ -449,7 +449,7 @@ test("check directive's arguments on OBJECT", async (t) => {
         t.notOk(schemaFilteringRun.parent, 'parent')
         t.notOk(schemaFilteringRun.args, 'args')
         t.same(schemaFilteringRun.context, context, 'context')
-        // t.same(schemaFilteringRun.info, info, 'info', { skip: 1 })
+        t.same(schemaFilteringRun.info.fieldName, '__typePolicy', 'info')
       }
       return true
     },
