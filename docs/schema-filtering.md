@@ -99,6 +99,7 @@ Will make the user able to see the `notes` field.
 
 - During the introspection query, the `applyPolicy` function is executed once per single GraphQL object.
 - The `applyPolicy` function doesn't have the input `parent` and `args` arguments set during the introspection run.
+- The `applyPolicy` function receives the `info` argument which contains basic information about the GraphQL entity assinged to the directive.
 - When the HTTP request payload contains an introspection query and a user-land query, you will not get auth errors because the introspection query is executed before the user-land query and filters the schema. Note that the protected fields will **not** be returned as expected, without any security implications. Here is an example of a GraphQL query that will not throw an error:
 
 ```graphql
