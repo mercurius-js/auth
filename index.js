@@ -3,6 +3,7 @@
 const fp = require('fastify-plugin')
 const Auth = require('./lib/auth')
 const { validateOpts } = require('./lib/validation')
+const filterSchema = require('./lib/filter-schema')
 
 const plugin = fp(
   async function (app, opts) {
@@ -21,10 +22,17 @@ const plugin = fp(
     app.graphql.addHook('onGatewayReplaceSchema', async (instance, schema) => {
       const authSchema = auth.getPolicy(schema)
       auth.registerAuthHandlers(schema, authSchema)
+      if (opts.filterSchema === true) {
+        filterSchema.updatePolicy(app, authSchema, opts)
+      }
     })
 
     if (typeof opts.authContext !== 'undefined') {
       app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))
+    }
+
+    if (opts.filterSchema === true) {
+      filterSchema(app, authSchema, opts)
     }
   },
   {
