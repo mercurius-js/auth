@@ -41,6 +41,7 @@ interface CustomContext extends MercuriusContext {
   auth?: { identity?: string };
 }
 const authOptions: MercuriusAuthOptions = {
+  filterSchema: true,
   authDirective: 'auth',
   async applyPolicy (
     authDirectiveAST,

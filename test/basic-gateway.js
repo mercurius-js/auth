@@ -439,3 +439,51 @@ test('gateway - should handle when auth context is not defined', async (t) => {
     }
   })
 })
+
+test('gateway - should filter the schema output', async (t) => {
+  t.plan(4)
+
+  const order = [
+    'topPosts',
+    'name',
+    'author'
+  ]
+
+  const app = await createTestGatewayServer(t, {
+    filterSchema: true,
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      t.equal(info.fieldName, order.shift())
+      return false
+    },
+    authDirective: 'auth'
+  })
+
+  const query = `{
+    __type(name: "Query") {
+      name
+      fields {
+        name
+      }
+    }
+  }`
+
+  const res = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-user': 'admin' },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  t.same(res.json(), {
+    data: {
+      __type: {
+        name: 'Query',
+        fields: [
+          {
+            name: 'me'
+          }
+        ]
+      }
+    }
+  })
+})
