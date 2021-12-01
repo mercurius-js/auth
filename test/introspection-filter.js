@@ -511,12 +511,12 @@ async function hasRolePolicy (authDirectiveAST, parent, args, context, info) {
 }
 
 function hasPermissionContext (context) {
-  return { permission: context.reply.request.headers['x-permission'] }
+  return { permission: context.reply.request.headers['x-permission'].split(',') }
 }
 async function hasPermissionPolicy (authDirectiveAST, parent, args, context, info) {
   const needed = authDirectiveAST.arguments.find(arg => arg.name.value === 'grant').value.value
 
-  const hasGrant = context.auth.permission?.split(',').includes(needed)
+  const hasGrant = context.auth.permission.includes(needed)
 
   if (!hasGrant) {
     throw new Error(`Needed ${needed} grant`)

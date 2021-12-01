@@ -660,7 +660,7 @@ test('repeatable directive', async (t) => {
     authDirective: 'counter',
     applyPolicy: async () => {
       t.pass('should be called three times')
-      return false
+      return true
     }
   })
 
@@ -676,7 +676,8 @@ test('repeatable directive', async (t) => {
       __type: {
         name: 'Message',
         fields: [
-          { name: 'title' }
+          { name: 'title' },
+          { name: 'message' }
         ]
       }
     }
