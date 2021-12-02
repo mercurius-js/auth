@@ -222,3 +222,92 @@ test('repeteable directives - should protect the schema and error accordingly', 
     ]
   })
 })
+
+test('repeteable directives - should throw a validation error when the repeated directive is not flagged as "repeatable"', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  const schema = `
+    directive @hasPermission (grant: String!) on OBJECT | FIELD_DEFINITION
+
+    type Message {
+      title: String!
+      notes: String @hasPermission(grant: "lv1") @hasPermission(grant: "notes")
+    }
+
+    type Query {
+      messages: [Message!]!
+    }
+  `
+
+  const resolvers = {
+    Query: {
+      messages: async () => {
+        return [
+          {
+            title: 'one',
+            notes: 'note one'
+          },
+          {
+            title: 'two',
+            notes: 'note two'
+          }
+        ]
+      },
+      adminMessages: async () => {
+        return [
+          {
+            title: 'admin one',
+            notes: 'admin note one'
+          },
+          {
+            title: 'admin two',
+            notes: 'admin note two'
+          }
+        ]
+      }
+    }
+  }
+
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+  app.register(mercuriusAuth, {
+    authContext (context) {
+      return {
+        permission: context.reply.request.headers['x-permission'].split(',')
+      }
+    },
+    async applyPolicy (authDirectiveAST, parent, args, context, info) {
+      const needed = authDirectiveAST.arguments.find(arg => arg.name.value === 'grant').value.value
+
+      return context.auth.permission.includes(needed)
+    },
+    authDirective: 'hasPermission'
+  })
+
+  const query = `query {
+    messages {
+      title
+      notes
+    }
+    adminMessages {
+      title
+      notes
+    }
+  }`
+
+  try {
+    await app.inject({
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-Permission': 'lv1' },
+      url: '/graphql',
+      body: JSON.stringify({ query })
+    })
+  } catch (validationError) {
+    t.ok(validationError)
+  }
+})
