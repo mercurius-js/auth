@@ -146,7 +146,7 @@ async function createTestGatewayServer (t, authOpts) {
   gateway.register(mercuriusAuth, authOpts || {
     authContext (context) {
       return {
-        identity: context.reply.request.headers['x-permission'].split(',')
+        permission: context.reply.request.headers['x-permission'].split(',')
       }
     },
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
@@ -154,7 +154,7 @@ async function createTestGatewayServer (t, authOpts) {
 
       return context.auth.permission.includes(needed)
     },
-    authDirective: 'auth'
+    authDirective: 'hasPermission'
   })
   return gateway
 }
