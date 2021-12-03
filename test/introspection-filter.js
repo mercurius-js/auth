@@ -9,11 +9,12 @@ const mercuriusAuth = require('..')
 const schema = `
   directive @auth on OBJECT | FIELD_DEFINITION
   directive @hasRole (role: String!) on OBJECT | FIELD_DEFINITION
-  directive @hasPermission (grant: String!) on OBJECT | FIELD_DEFINITION
+  directive @hasPermission (grant: String!) repeatable on OBJECT | FIELD_DEFINITION
 
   type Message {
     title: String!
     message: String @auth
+    notes: String @hasPermission(grant: "see-all") @hasPermission(grant: "notes")
     password: String @hasPermission(grant: "see-all")
   }
   
@@ -76,11 +77,13 @@ const messages = [
   {
     title: 'one',
     message: 'acme one',
+    notes: 'acme one',
     password: 'acme-one'
   },
   {
     title: 'two',
     message: 'acme two',
+    notes: 'acme two',
     password: 'acme-two'
   }
 ]
@@ -301,7 +304,7 @@ test('should be able to access the query to determine that users have sufficient
         'x-permission': 'see-all'
       },
       result (t, responseJson) {
-        t.plan(3)
+        t.plan(4)
         const { types } = responseJson.data.__schema
 
         t.notOk(types.find(type => type.name === 'AdminMessage'), 'the AdminMessage type has been filtered')
@@ -309,6 +312,27 @@ test('should be able to access the query to determine that users have sufficient
         const objMessage = types.find(type => type.name === 'Message')
         t.ok(objMessage, 'the Message type is present')
         t.ok(objMessage.fields.find(field => field.name === 'password'), 'role is right')
+        t.notOk(objMessage.fields.find(field => field.name === 'notes'), 'doesn\'t have the role "notes"')
+      }
+    },
+    {
+      name: 'Introspection query with multiple permissions',
+      query: getIntrospectionQuery(),
+      headers: {
+        'x-token': 'token',
+        'x-role': 'not-an-admin',
+        'x-permission': 'see-all,notes'
+      },
+      result (t, responseJson) {
+        t.plan(4)
+        const { types } = responseJson.data.__schema
+
+        t.notOk(types.find(type => type.name === 'AdminMessage'), 'the AdminMessage type has been filtered')
+
+        const objMessage = types.find(type => type.name === 'Message')
+        t.ok(objMessage, 'the Message type is present')
+        t.ok(objMessage.fields.find(field => field.name === 'password'), 'role is right')
+        t.ok(objMessage.fields.find(field => field.name === 'notes'), 'role is right')
       }
     }
   ].forEach(({ name, query, result, headers }) => {
@@ -487,11 +511,15 @@ async function hasRolePolicy (authDirectiveAST, parent, args, context, info) {
 }
 
 function hasPermissionContext (context) {
-  return { permission: context.reply.request.headers['x-permission'] }
+  const headerValue = context.reply.request.headers['x-permission']
+
+  return { permission: headerValue ? headerValue.split(',') : [] }
 }
 async function hasPermissionPolicy (authDirectiveAST, parent, args, context, info) {
   const needed = authDirectiveAST.arguments.find(arg => arg.name.value === 'grant').value.value
-  const hasGrant = context.auth.permission === needed
+
+  const hasGrant = context.auth.permission.includes(needed)
+
   if (!hasGrant) {
     throw new Error(`Needed ${needed} grant`)
   }

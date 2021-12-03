@@ -636,7 +636,7 @@ test('multiple filtered directives on different contexts', async (t) => {
 })
 
 test('repeatable directive', async (t) => {
-  t.plan(4)
+  t.plan(5)
 
   const app = Fastify()
   t.teardown(app.close.bind(app))
@@ -659,9 +659,8 @@ test('repeatable directive', async (t) => {
     filterSchema: true,
     authDirective: 'counter',
     applyPolicy: async () => {
-      t.pass('should be called once')
-      t.todo('should be called three times but repeatable directives are not supported')
-      return false
+      t.pass('should be called three times')
+      return true
     }
   })
 
@@ -677,7 +676,8 @@ test('repeatable directive', async (t) => {
       __type: {
         name: 'Message',
         fields: [
-          { name: 'title' }
+          { name: 'title' },
+          { name: 'message' }
         ]
       }
     }
