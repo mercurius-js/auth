@@ -38,7 +38,7 @@
     "autocannon": "^7.0.5",
     "concurrently": "^7.0.0",
     "fastify": "^3.0.2",
-    "mercurius": "^8.10.0",
+    "mercurius": "^9.1.0",
     "pre-commit": "^1.2.2",
     "snazzy": "^9.0.0",
     "standard": "^16.0.3",
@@ -51,7 +51,7 @@
     "@graphql-tools/wrap": "^8.3.2",
     "fastify-error": "^0.3.0",
     "fastify-plugin": "^3.0.0",
-    "graphql": "^15.4.0"
+    "graphql": "^16.2.0"
   },
   "tsd": {
     "directory": "./test/types"
