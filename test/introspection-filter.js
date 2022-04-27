@@ -111,7 +111,7 @@ test('should be able to access the query to determine that users have sufficient
   })
 
   app.register(mercuriusAuth, {
-    authContext: authContext,
+    authContext,
     applyPolicy: authPolicy,
     filterSchema: true,
     authDirective: 'auth'
@@ -366,7 +366,7 @@ test('the single filter preExecution lets the app crash', async (t) => {
   })
 
   app.register(mercuriusAuth, {
-    authContext: authContext,
+    authContext,
     applyPolicy: authPolicy,
     filterSchema: true,
     authDirective: 'auth'
