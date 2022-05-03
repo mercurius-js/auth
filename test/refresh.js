@@ -53,7 +53,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
         name: String @auth
       }
     `,
-    resolvers: resolvers,
+    resolvers,
     federationMetadata: true
   })
 
@@ -237,7 +237,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
         name: String @auth
       }
     `,
-    resolvers: resolvers,
+    resolvers,
     federationMetadata: true
   })
 
