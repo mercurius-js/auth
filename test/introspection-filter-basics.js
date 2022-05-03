@@ -686,6 +686,51 @@ test('repeatable directive', async (t) => {
   checkInternals(t, app, { directives: 1 })
 })
 
+test('introspection queries should work when filtered root types are empty', async (t) => {
+  t.plan(3)
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @hideMe on OBJECT
+
+    type Message @hideMe {
+      message: String
+      password: String
+    }
+
+    type Query {
+      publicMessages(org: String): [Message!]
+    }
+    `
+  })
+
+  app.register(mercuriusAuth, {
+    filterSchema: true,
+    authDirective: 'hideMe',
+    applyPolicy: async () => {
+      t.pass('should be called on an introspection query')
+      return false
+    }
+  })
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    url: '/graphql',
+    body: JSON.stringify({ query: queryObjectMessage })
+  })
+
+  t.same(response.json(), {
+    data: {
+      __type: null
+    }
+  })
+
+  checkInternals(t, app, { directives: 1 })
+})
+
 function checkInternals (t, app, { directives }) {
   const checkGrouping = Object.getOwnPropertySymbols(app)
   const groupSym = checkGrouping.find(sym => sym.toString().includes('mercurius-auth.filtering.group'))
