@@ -11,3 +11,8 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    # We must ignore updates to the following dependency
+    # because the latest updates to this break mercurius-auth
+    # TODO: remove when the above issue is resolved
+    ignore:
+      - dependency-name: "@graphql-tools/wrap"
