@@ -14,6 +14,13 @@ npx concurrently --raw -k \
   "node ./bench/normal-with-auth.js" \
   "npx wait-on tcp:3000 && node ./bench/normal-bench.js"
 
+echo '============================================'
+echo '= Normal Mode | With Introspection Filters ='
+echo '============================================'
+npx concurrently --raw -k \
+  "node ./bench/normal-with-introspection-filters.js" \
+  "npx wait-on tcp:3000 && node ./bench/normal-bench-introspection.js"
+
 echo '==============================='
 echo '= Gateway Mode | Without Auth ='
 echo '==============================='

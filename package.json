@@ -49,7 +49,6 @@
   },
   "dependencies": {
     "@fastify/error": "^3.0.0",
-    "@graphql-tools/wrap": "8.4.12",
     "fastify-plugin": "^3.0.0",
     "graphql": "^16.2.0"
   },
