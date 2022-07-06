@@ -51,7 +51,7 @@ app.register(mercuriusAuth, {
   authDirective: 'auth'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```
 
 The auth directive can also be use at the type level, to wrap all fields of a type (useful when working with federated types).  You can nest auth directives this way as well to protect certain types/fields of a parent type.
@@ -111,7 +111,7 @@ app.register(mercuriusAuth, {
   authDirective: 'auth'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```
 
 ## Multiple Directives
@@ -186,5 +186,5 @@ app.register(mercuriusAuth, {
   authDirective: 'hasPermission'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```

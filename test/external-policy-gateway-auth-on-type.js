@@ -13,7 +13,7 @@ async function createTestService (t, schema, resolvers = {}) {
     federationMetadata: true
   })
 
-  await service.listen(0)
+  await service.listen({ port: 0 })
   return [service, service.server.address().port]
 }
 
@@ -129,7 +129,7 @@ async function createTestGatewayServer (t) {
       services: [
         {
           name: 'user',
-          url: `http://localhost:${userServicePort}/graphql`,
+          url: `http://127.0.0.1:${userServicePort}/graphql`,
           rewriteHeaders: (headers, context) => {
             return {
               'x-user': headers['x-user']
@@ -137,7 +137,7 @@ async function createTestGatewayServer (t) {
           }
         }, {
           name: 'post',
-          url: `http://localhost:${postServicePort}/graphql`,
+          url: `http://127.0.0.1:${postServicePort}/graphql`,
           rewriteHeaders: (headers, context) => {
             return {
               'x-user': headers['x-user']

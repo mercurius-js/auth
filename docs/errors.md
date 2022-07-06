@@ -105,7 +105,7 @@ app.register(mercuriusAuth, {
   authDirective: 'auth'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```
 
 ### Returning the custom error in the `applyPolicy` function
@@ -162,7 +162,7 @@ app.register(mercuriusAuth, {
   authDirective: 'auth'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```
 ### Status Code
 Mercurius defaults all errors with the HTTP 500 status code. You can customize this property by using the built-in `ErrorWithProps` custom error provided by the underlining Mercurius plug-in

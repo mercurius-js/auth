@@ -37,7 +37,7 @@ const plugin = fp(
   },
   {
     name: 'mercurius-auth',
-    fastify: '>=3.x',
+    fastify: '4.x',
     dependencies: ['mercurius']
   }
 )

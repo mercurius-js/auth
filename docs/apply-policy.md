@@ -70,7 +70,7 @@ app.register(mercuriusAuth, {
   authDirective: 'auth'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```
 
 ## External Policy mode
@@ -169,5 +169,5 @@ app.register(mercuriusAuth, {
   }
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```

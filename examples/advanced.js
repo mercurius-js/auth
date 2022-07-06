@@ -82,4 +82,4 @@ app.register(mercuriusAuth, {
   authDirective: 'orgAuth'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })

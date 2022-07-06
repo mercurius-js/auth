@@ -9,14 +9,14 @@ app.register(mercurius, {
   gateway: {
     services: [{
       name: 'user',
-      url: 'http://localhost:3001/graphql'
+      url: 'http://127.0.0.1:3001/graphql'
     }, {
       name: 'post',
-      url: 'http://localhost:3002/graphql'
+      url: 'http://127.0.0.1:3002/graphql'
     }]
   },
   graphiql: false,
   jit: 1
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })

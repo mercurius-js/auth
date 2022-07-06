@@ -20,7 +20,7 @@ const query = `query {
 
 const instance = autocannon(
   {
-    url: 'http://localhost:3000/graphql',
+    url: 'http://127.0.0.1:3000/graphql',
     connections: 100,
     title: '',
     method: 'POST',
