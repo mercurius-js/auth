@@ -55,7 +55,7 @@ app.register(mercuriusAuth, {
   authDirective: 'auth'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```
 
 ## Usage without `authContext`
@@ -113,7 +113,7 @@ async function start () {
     }
   })
 
-  app.listen(3000)
+  app.listen({ port: 3000 })
 }
 
 start()

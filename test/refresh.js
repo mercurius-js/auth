@@ -57,7 +57,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
     federationMetadata: true
   })
 
-  await userService.listen(0)
+  await userService.listen({ port: 0 })
 
   const userServicePort = userService.server.address().port
 
@@ -66,7 +66,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
       services: [
         {
           name: 'user',
-          url: `http://localhost:${userServicePort}/graphql`
+          url: `http://127.0.0.1:${userServicePort}/graphql`
         }
       ],
       pollingInterval: 2000
@@ -241,7 +241,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
     federationMetadata: true
   })
 
-  await userService.listen(0)
+  await userService.listen({ port: 0 })
 
   const userServicePort = userService.server.address().port
 
@@ -250,7 +250,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
       services: [
         {
           name: 'user',
-          url: `http://localhost:${userServicePort}/graphql`
+          url: `http://127.0.0.1:${userServicePort}/graphql`
         }
       ],
       pollingInterval: 2000

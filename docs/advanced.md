@@ -107,7 +107,7 @@ app.register(mercuriusAuth, {
   authDirective: 'auth'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```
 
 ## Run multiple auth plugins at the same time
@@ -172,5 +172,5 @@ app.register(mercuriusAuth, {
   authDirective: 'auth2'
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```

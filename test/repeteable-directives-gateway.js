@@ -12,7 +12,7 @@ async function createTestService (t, schema, resolvers = {}) {
     resolvers,
     federationMetadata: true
   })
-  await service.listen(0)
+  await service.listen({ port: 0 })
   return [service, service.server.address().port]
 }
 
@@ -135,10 +135,10 @@ async function createTestGatewayServer (t, authOpts) {
     gateway: {
       services: [{
         name: 'user',
-        url: `http://localhost:${userServicePort}/graphql`
+        url: `http://127.0.0.1:${userServicePort}/graphql`
       }, {
         name: 'post',
-        url: `http://localhost:${postServicePort}/graphql`
+        url: `http://127.0.0.1:${postServicePort}/graphql`
       }]
     }
   })

@@ -37,7 +37,7 @@ async function createService (schema, resolvers = {}) {
     },
     authDirective: 'auth'
   })
-  await service.listen(0)
+  await service.listen({ port: 0 })
   return [service, service.server.address().port]
 }
 
@@ -176,7 +176,7 @@ async function start () {
     gateway: {
       services: [{
         name: 'user',
-        url: `http://localhost:${userServicePort}/graphql`,
+        url: `http://127.0.0.1:${userServicePort}/graphql`,
         rewriteHeaders: (headers, context) => {
           if (headers['x-user']) {
             return {
@@ -187,7 +187,7 @@ async function start () {
         }
       }, {
         name: 'post',
-        url: `http://localhost:${postServicePort}/graphql`,
+        url: `http://127.0.0.1:${postServicePort}/graphql`,
         rewriteHeaders: (headers, context) => {
           if (headers['x-user']) {
             return {
@@ -201,7 +201,7 @@ async function start () {
     graphiql: true
   })
 
-  await gateway.listen(3000)
+  await gateway.listen({ port: 3000 })
 }
 
 start()

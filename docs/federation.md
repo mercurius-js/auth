@@ -16,7 +16,7 @@ async function createService (schema, resolvers = {}) {
     resolvers,
     federationMetadata: true
   })
-  await service.listen(0)
+  await service.listen({ port: 0 })
   return [service, service.server.address().port]
 }
 
@@ -153,10 +153,10 @@ async function start (authOpts) {
     gateway: {
       services: [{
         name: 'user',
-        url: `http://localhost:${userServicePort}/graphql`
+        url: `http://127.0.0.1:${userServicePort}/graphql`
       }, {
         name: 'post',
-        url: `http://localhost:${postServicePort}/graphql`
+        url: `http://127.0.0.1:${postServicePort}/graphql`
       }]
     }
   })
@@ -173,7 +173,7 @@ async function start (authOpts) {
     authDirective: 'auth'
   })
 
-  await gateway.listen(3000)
+  await gateway.listen({ port: 3000 })
 }
 
 start()

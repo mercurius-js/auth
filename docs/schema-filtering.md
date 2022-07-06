@@ -47,7 +47,7 @@ app.register(mercuriusAuth, {
   }
 })
 
-app.listen(3000)
+app.listen({ port: 3000 })
 ```
 
 After starting the server, you can use the following GraphQL query to test the filtering:
