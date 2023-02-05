@@ -3,6 +3,7 @@
 const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
+const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
 const mercuriusAuth = require('..')
 
 const schema = `
@@ -1102,10 +1103,9 @@ test('basic - should work at type level, entity query', async (t) => {
   const app = Fastify()
   t.teardown(app.close.bind(app))
 
-  app.register(mercurius, {
+  app.register(mercuriusFederationPlugin, {
     schema,
-    resolvers,
-    federationMetadata: true
+    resolvers
   })
   app.register(mercuriusAuth, {
     authContext (context) {

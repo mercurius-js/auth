@@ -19,13 +19,15 @@ const plugin = fp(
     auth.registerAuthHandlers(app.graphql.schema, authSchema)
 
     // Add hook to regenerate the resolvers when the schema is refreshed
-    app.graphql.addHook('onGatewayReplaceSchema', async (instance, schema) => {
-      const authSchema = auth.getPolicy(schema)
-      auth.registerAuthHandlers(schema, authSchema)
-      if (opts.filterSchema === true) {
-        filterSchema.updatePolicy(app, authSchema, opts)
-      }
-    })
+    if (app.graphqlGateway) {
+      app.graphqlGateway.addHook('onGatewayReplaceSchema', async (instance, schema) => {
+        const authSchema = auth.getPolicy(schema)
+        auth.registerAuthHandlers(schema, authSchema)
+        if (opts.filterSchema === true) {
+          filterSchema.updatePolicy(app, authSchema, opts)
+        }
+      })
+    }
 
     if (typeof opts.authContext !== 'undefined') {
       app.graphql.addHook('preExecution', auth.authContextHook.bind(auth))

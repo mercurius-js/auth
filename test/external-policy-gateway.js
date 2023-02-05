@@ -2,15 +2,15 @@
 
 const t = require('tap')
 const Fastify = require('fastify')
-const mercurius = require('mercurius')
+const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
+const mercuriusGateway = require('@mercuriusjs/gateway')
 const mercuriusAuth = require('..')
 
 async function createTestService (t, schema, resolvers = {}) {
   const service = Fastify()
-  service.register(mercurius, {
+  service.register(mercuriusFederationPlugin, {
     schema,
-    resolvers,
-    federationMetadata: true
+    resolvers
   })
   await service.listen({ port: 0 })
   return [service, service.server.address().port]
@@ -123,7 +123,7 @@ async function createTestGatewayServer (t, authOpts) {
     await userService.close()
     await postService.close()
   })
-  gateway.register(mercurius, {
+  gateway.register(mercuriusGateway, {
     gateway: {
       services: [{
         name: 'user',
