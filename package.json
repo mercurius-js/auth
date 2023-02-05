@@ -1,6 +1,6 @@
 {
   "name": "mercurius-auth",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Mercurius Auth Plugin adds configurable Authentication and Authorization support to Mercurius.",
   "main": "index.js",
   "types": "index.d.ts",
