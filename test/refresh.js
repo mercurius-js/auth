@@ -4,7 +4,8 @@ const { test } = require('tap')
 const FakeTimers = require('@sinonjs/fake-timers')
 const { promisify } = require('util')
 const Fastify = require('fastify')
-const mercurius = require('mercurius')
+const { mercuriusFederationPlugin, buildFederationSchema } = require('@mercuriusjs/federation')
+const mercuriusGateway = require('@mercuriusjs/gateway')
 const mercuriusAuth = require('..')
 
 const immediate = promisify(setImmediate)
@@ -40,7 +41,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
     await userService.close()
   })
 
-  userService.register(mercurius, {
+  userService.register(mercuriusFederationPlugin, {
     schema: `
       directive @auth on OBJECT | FIELD_DEFINITION
 
@@ -53,15 +54,14 @@ test('polling interval with a new schema should trigger refresh of schema policy
         name: String @auth
       }
     `,
-    resolvers,
-    federationMetadata: true
+    resolvers
   })
 
   await userService.listen({ port: 0 })
 
   const userServicePort = userService.server.address().port
 
-  await gateway.register(mercurius, {
+  await gateway.register(mercuriusGateway, {
     gateway: {
       services: [
         {
@@ -127,7 +127,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
   }
 
   userService.graphql.replaceSchema(
-    mercurius.buildFederationSchema(`
+    buildFederationSchema(`
       directive @auth on OBJECT | FIELD_DEFINITION
 
       extend type Query {
@@ -224,7 +224,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
     await userService.close()
   })
 
-  userService.register(mercurius, {
+  userService.register(mercuriusFederationPlugin, {
     schema: `
       directive @auth on OBJECT | FIELD_DEFINITION
 
@@ -237,15 +237,14 @@ test('polling a filtered schema should complete the refresh succesfully', async 
         name: String @auth
       }
     `,
-    resolvers,
-    federationMetadata: true
+    resolvers
   })
 
   await userService.listen({ port: 0 })
 
   const userServicePort = userService.server.address().port
 
-  await gateway.register(mercurius, {
+  await gateway.register(mercuriusGateway, {
     gateway: {
       services: [
         {
@@ -341,7 +340,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
   }
 
   userService.graphql.replaceSchema(
-    mercurius.buildFederationSchema(`
+    buildFederationSchema(`
       directive @auth on OBJECT | FIELD_DEFINITION
 
       extend type Query {

@@ -2,15 +2,15 @@
 
 const { test } = require('tap')
 const Fastify = require('fastify')
-const mercurius = require('mercurius')
+const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
+const mercuriusGateway = require('@mercuriusjs/gateway')
 const mercuriusAuth = require('..')
 
 async function createTestService (t, schema, resolvers = {}) {
   const service = Fastify()
-  service.register(mercurius, {
+  service.register(mercuriusFederationPlugin, {
     schema,
-    resolvers,
-    federationMetadata: true
+    resolvers
   })
   await service.listen({ port: 0 })
   return [service, service.server.address().port]
@@ -149,7 +149,7 @@ async function createTestGatewayServer (t, authOpts) {
     await userService.close()
     await postService.close()
   })
-  gateway.register(mercurius, {
+  gateway.register(mercuriusGateway, {
     gateway: {
       services: [{
         name: 'user',
@@ -375,7 +375,7 @@ test('gateway - should handle when auth context is not defined', async (t) => {
     authDirective: 'auth'
   })
 
-  app.graphql.addHook('preGatewayExecution', async (schema, document, context, service) => {
+  app.graphqlGateway.addHook('preGatewayExecution', async (schema, document, context, service) => {
     Object.assign(context, {
       other: {
         identity: context.reply.request.headers['x-user']
