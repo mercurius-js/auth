@@ -198,7 +198,7 @@ The auth directive can be modified to allow multiple roles to be passed in.
 
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
-const mercuriusAuth = require('..')
+const mercuriusAuth = require('mercurius-auth')
 
 const app = Fastify()
 
