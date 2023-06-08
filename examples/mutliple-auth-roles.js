@@ -24,30 +24,31 @@ const schema = `
 const resolvers = {
   Query: {
     add: async (_, { x, y }) => x + y,
-    subtract: async (_, { x, y }) => x - y,
-  },
+    subtract: async (_, { x, y }) => x - y
+  }
 }
 
 app.register(mercurius, {
   schema,
-  resolvers,
+  resolvers
 })
 
 app.register(mercuriusAuth, {
-  authContext(context) {
+  authContext (context) {
     return {
       user: {
         id: context.reply.request.headers['x-user-id'],
-        role: context.reply.request.headers['x-user-role'],
-      },
+        role: context.reply.request.headers['x-user-role']
+      }
     }
   },
-  async applyPolicy(policy, parent, args, context, info) {
+  async applyPolicy (policy, parent, args, context, info) {
     const userId = context?.auth?.user?.id
     const userRole = context?.auth?.user?.role ?? ''
 
-    if (!userId)
+    if (!userId) {
       throw new Error('No Authorization was found in request.headers')
+    }
 
     const roles = [userRole]
     const requires = policy.arguments[0].value.values.map((roleEnum) =>
@@ -58,7 +59,7 @@ app.register(mercuriusAuth, {
     if (isAuthorized) return true
     throw new Error(`Insufficient permission for ${info.fieldName}`)
   },
-  authDirective: 'auth',
+  authDirective: 'auth'
 })
 
 app.listen({ port: 3000 })
