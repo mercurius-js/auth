@@ -66,6 +66,15 @@ export interface MercuriusAuthDirectiveOptions<TParent=any, TArgs=any, TContext=
    * When set to true, the plugin will automatically filter the output Schema during Introspection queries if the applyPolicy function is not satisfated.
    */
   filterSchema?: boolean;
+  /**
+   * Output Policy Errors
+   */
+  outputPolicyErrors?: {
+    /**
+     * If this is set any 'string' type would be replaced with the returned string value either static or from a function.
+     */
+    valueOverride?: ((input: string) => string) | string;
+  }
 }
 
 export interface MercuriusAuthExternalPolicyOptions<TParent=any, TArgs=any, TContext=MercuriusContext, TPolicy=any> extends MercuriusAuthBaseOptions<TParent, TArgs, TContext, TPolicy> {
