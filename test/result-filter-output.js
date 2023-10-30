@@ -20,63 +20,7 @@ const messages = [
   }
 ]
 
-test('remove valid notes results and replace it with null without any errors', async (t) => {
-  const app = Fastify()
-  t.teardown(app.close.bind(app))
-
-  app.register(mercurius, {
-    schema: `
-    directive @filterData (disallow: String!) on OBJECT | FIELD_DEFINITION
-
-    type Message {
-      message: String!
-      notes: String! @filterData (disallow: "no-read-notes")
-    }
-    type Query {
-      publicMessages: [Message!]
-    }
-    `,
-    resolvers: {
-      Query: {
-        publicMessages: async (parent, args, context, info) => {
-          return messages
-        }
-      }
-    }
-  })
-
-  app.register(mercuriusAuth, {
-    authContext: hasPermissionContext,
-    applyPolicy: hasFilterPolicy,
-    outputPolicyErrors: {
-      enabled: false
-    },
-    authDirective: 'filterData'
-  })
-
-  const query = `{
-    publicMessages { message, notes }
-  }`
-
-  const response = await app.inject({
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-permission': 'no-read-notes'
-    },
-    url: '/graphql',
-    body: JSON.stringify({ query })
-  })
-
-  const { data } = JSON.parse(response.body)
-
-  t.plan(data.publicMessages.length)
-  for (let i = 0; i < data.publicMessages.length; i++) {
-    t.ok((data.publicMessages[i].notes == null), 'notes are null')
-  }
-})
-
-test("ensure that a user who doesn't have the role to filter, still sees the notes", async (t) => {
+test('remove valid notes results and replace it with empty string without any errors since user has a permission that does so', async (t) => {
   const app = Fastify()
   t.teardown(app.close.bind(app))
 
@@ -111,9 +55,62 @@ test("ensure that a user who doesn't have the role to filter, still sees the not
     authDirective: 'filterData'
   })
 
-  const query = `{
-    publicMessages { message, notes }
-  }`
+  const query = 'query { publicMessages { message, notes } }'
+
+  const response = await app.inject({
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-permission': 'no-read-notes'
+    },
+    url: '/graphql',
+    body: JSON.stringify({ query })
+  })
+
+  const { data } = JSON.parse(response.body)
+
+  t.plan(data.publicMessages.length)
+  for (let i = 0; i < data.publicMessages.length; i++) {
+    t.ok((data.publicMessages[i].notes === ''), 'notes are an empty string')
+  }
+})
+
+test("ensure that a user who doesn't have the role to filter, still sees the notes as they normally would", async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @filterData (disallow: String!) on OBJECT | FIELD_DEFINITION
+
+    type Message {
+      message: String!
+      notes: String! @filterData (disallow: "no-read-notes")
+    }
+    type Query {
+      publicMessages: [Message!]
+    }
+    `,
+    resolvers: {
+      Query: {
+        publicMessages: async (parent, args, context, info) => {
+          return messages
+        }
+      }
+    }
+  })
+
+  app.register(mercuriusAuth, {
+    authContext: hasPermissionContext,
+    applyPolicy: hasFilterPolicy,
+    outputPolicyErrors: {
+      enabled: false
+    },
+    filterSchema: true,
+    authDirective: 'filterData'
+  })
+
+  const query = 'query { publicMessages { message, notes } }'
 
   const response = await app.inject({
     method: 'POST',
@@ -133,7 +130,7 @@ test("ensure that a user who doesn't have the role to filter, still sees the not
   }
 })
 
-test(`remove valid notes results and replace it with "foo" without any errors`, async (t) => {
+test('remove valid notes results and replace it with "foo" without any errors', async (t) => {
   const app = Fastify()
   t.teardown(app.close.bind(app))
 
@@ -168,9 +165,7 @@ test(`remove valid notes results and replace it with "foo" without any errors`, 
     authDirective: 'filterData'
   })
 
-  const query = `{
-    publicMessages { message, notes }
-  }`
+  const query = 'query { publicMessages { message, notes } }'
 
   const response = await app.inject({
     method: 'POST',
@@ -186,7 +181,7 @@ test(`remove valid notes results and replace it with "foo" without any errors`, 
 
   t.plan(data.publicMessages.length)
   for (let i = 0; i < data.publicMessages.length; i++) {
-    t.ok((data.publicMessages[i].notes === 'foo'), 'notes is foo')
+    t.ok((data.publicMessages[i].notes === 'foo'), 'notes do equal foo')
   }
 })
 
