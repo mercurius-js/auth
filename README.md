@@ -26,6 +26,7 @@ Features:
 - [Apply Policy](docs/apply-policy.md)
 - [Auth Directive](docs/auth-directive.md)
   - [Schema filtering](docs/schema-filtering.md)
+  - [Schema replacement](docs/schema-replacement.md)
 - [External Policy](docs/external-policy.md)
 - [Errors](docs/errors.md)
 - [Federation](docs/federation.md)
