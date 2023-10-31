@@ -33,7 +33,7 @@ test('remove valid notes results and replace it with empty string without any er
 
     type Message {
       message: String!
-      notes: String! @filterData (disallow: "no-read-notes")
+      notes: String @filterData (disallow: "no-read-notes")
     }
     
     type Query {
@@ -73,7 +73,7 @@ test('remove valid notes results and replace it with empty string without any er
 
   t.plan(data.publicMessages.length)
   for (let i = 0; i < data.publicMessages.length; i++) {
-    t.ok((data.publicMessages[i].notes === ''), 'notes are an empty string')
+    t.ok((data.publicMessages[i].notes === null), 'notes are null')
   }
 })
 
@@ -241,7 +241,7 @@ test('remove valid notes results and replace it with "foo" without any errors, u
   }
 })
 
-test('object or field', async (t) => {
+test('remove valid notes results and if the function returns anything other than a string, error out', async (t) => {
   const app = Fastify()
   t.teardown(app.close.bind(app))
 
@@ -251,7 +251,7 @@ test('object or field', async (t) => {
 
     type Message {
       message: String!
-      notes: String @filterData (disallow: "not allowed")
+      notes: String! @filterData (disallow: "no-read-notes")
     }
     
     type Query {
@@ -273,23 +273,75 @@ test('object or field', async (t) => {
     outputPolicyErrors: {
       enabled: false,
       valueOverride: () => {
-        return 'foo'
+        return 1
       }
     },
     authDirective: 'filterData'
   })
+
   try {
     await app.inject({
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-permission': 'not allowed'
+        'x-permission': 'no-read-notes'
       },
       url: '/graphql',
       body: JSON.stringify({ query })
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('You can not do a replacement on a GraphQL scalar type that is not a String and is not optionally null'))
+    t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('Replacement must be a valid string.'))
+  }
+})
+
+test('can not filter out on a Int! type', async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @filterData (disallow: String!) on FIELD_DEFINITION
+
+    type Message {
+      message: String!
+      notes: Int! @filterData (disallow: "no-read-notes")
+    }
+    
+    type Query {
+      publicMessages: [Message!]
+    }
+    `,
+    resolvers: {
+      Query: {
+        publicMessages: async (parent, args, context, info) => {
+          return messages
+        }
+      }
+    }
+  })
+
+  app.register(mercuriusAuth, {
+    authContext: hasPermissionContext,
+    applyPolicy: hasFilterPolicy,
+    outputPolicyErrors: {
+      enabled: false,
+      valueOverride: 'bar'
+    },
+    authDirective: 'filterData'
+  })
+
+  try {
+    await app.inject({
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-permission': 'no-read-notes'
+      },
+      url: '/graphql',
+      body: JSON.stringify({ query })
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('You can not do a replacement on a GraphQL scalar type that is not a String'))
   }
 })
 
