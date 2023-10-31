@@ -4,6 +4,7 @@ const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
+const { MER_AUTH_ERR_FAILED_POLICY_CHECK } = require('../lib/errors')
 
 const messages = [
   {
@@ -20,18 +21,21 @@ const messages = [
   }
 ]
 
+const query = 'query { publicMessages { message, notes } }'
+
 test('remove valid notes results and replace it with empty string without any errors since user has a permission that does so', async (t) => {
   const app = Fastify()
   t.teardown(app.close.bind(app))
 
   app.register(mercurius, {
     schema: `
-    directive @filterData (disallow: String!) on OBJECT | FIELD_DEFINITION
+    directive @filterData (disallow: String!) on FIELD_DEFINITION
 
     type Message {
       message: String!
       notes: String! @filterData (disallow: "no-read-notes")
     }
+    
     type Query {
       publicMessages: [Message!]
     }
@@ -54,8 +58,6 @@ test('remove valid notes results and replace it with empty string without any er
     filterSchema: true,
     authDirective: 'filterData'
   })
-
-  const query = 'query { publicMessages { message, notes } }'
 
   const response = await app.inject({
     method: 'POST',
@@ -81,12 +83,13 @@ test("ensure that a user who doesn't have the role to filter, still sees the not
 
   app.register(mercurius, {
     schema: `
-    directive @filterData (disallow: String!) on OBJECT | FIELD_DEFINITION
+    directive @filterData (disallow: String!) on FIELD_DEFINITION
 
     type Message {
       message: String!
       notes: String! @filterData (disallow: "no-read-notes")
     }
+    
     type Query {
       publicMessages: [Message!]
     }
@@ -109,8 +112,6 @@ test("ensure that a user who doesn't have the role to filter, still sees the not
     filterSchema: true,
     authDirective: 'filterData'
   })
-
-  const query = 'query { publicMessages { message, notes } }'
 
   const response = await app.inject({
     method: 'POST',
@@ -136,12 +137,13 @@ test('remove valid notes results and replace it with "foo" without any errors, u
 
   app.register(mercurius, {
     schema: `
-    directive @filterData (disallow: String!) on OBJECT | FIELD_DEFINITION
+    directive @filterData (disallow: String!) on FIELD_DEFINITION
 
     type Message {
       message: String!
       notes: String! @filterData (disallow: "no-read-notes")
     }
+    
     type Query {
       publicMessages: [Message!]
     }
@@ -164,8 +166,6 @@ test('remove valid notes results and replace it with "foo" without any errors, u
     },
     authDirective: 'filterData'
   })
-
-  const query = 'query { publicMessages { message, notes } }'
 
   const response = await app.inject({
     method: 'POST',
@@ -191,12 +191,13 @@ test('remove valid notes results and replace it with "foo" without any errors, u
 
   app.register(mercurius, {
     schema: `
-    directive @filterData (disallow: String!) on OBJECT | FIELD_DEFINITION
+    directive @filterData (disallow: String!) on FIELD_DEFINITION
 
     type Message {
       message: String!
       notes: String! @filterData (disallow: "no-read-notes")
     }
+    
     type Query {
       publicMessages: [Message!]
     }
@@ -222,8 +223,6 @@ test('remove valid notes results and replace it with "foo" without any errors, u
     authDirective: 'filterData'
   })
 
-  const query = 'query { publicMessages { message, notes } }'
-
   const response = await app.inject({
     method: 'POST',
     headers: {
@@ -239,6 +238,58 @@ test('remove valid notes results and replace it with "foo" without any errors, u
   t.plan(data.publicMessages.length)
   for (let i = 0; i < data.publicMessages.length; i++) {
     t.ok((data.publicMessages[i].notes === 'foo'), 'notes do equal foo')
+  }
+})
+
+test('object or field', async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @filterData (disallow: String!) on FIELD_DEFINITION
+
+    type Message {
+      message: String!
+      notes: String @filterData (disallow: "not allowed")
+    }
+    
+    type Query {
+      publicMessages: [Message!]
+    }
+    `,
+    resolvers: {
+      Query: {
+        publicMessages: async (parent, args, context, info) => {
+          return messages
+        }
+      }
+    }
+  })
+
+  app.register(mercuriusAuth, {
+    authContext: hasPermissionContext,
+    applyPolicy: hasFilterPolicy,
+    outputPolicyErrors: {
+      enabled: false,
+      valueOverride: () => {
+        return 'foo'
+      }
+    },
+    authDirective: 'filterData'
+  })
+  try {
+    await app.inject({
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-permission': 'not allowed'
+      },
+      url: '/graphql',
+      body: JSON.stringify({ query })
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('You can not do a replacement on a GraphQL scalar type that is not a String and is not optionally null'))
   }
 })
 
