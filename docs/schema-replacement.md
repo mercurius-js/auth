@@ -136,4 +136,7 @@ This will replace the `notes` schema if it matches the regex for removing the fi
 
 ## Invalid Scalar Types
 
-You can only do the replacement on String Scalar types and also it has to not be optional.
+You can only do the replacement on String Scalar types.
+
+Please note that you create a custom Scalar type, however it still must be registered as a String otherwise it will fail.
+

@@ -294,13 +294,26 @@ test('remove valid notes results and if the function returns anything other than
   }
 })
 
-test('can not filter out on a Int! type', async (t) => {
-  const app = Fastify()
-  t.teardown(app.close.bind(app))
+test('can not filter and replace on a type that is not a String type', async (t) => {
+  ;[
+    {
+      name: 'should fail on ID type',
+      schema: `
+        directive @filterData (disallow: String!) on FIELD_DEFINITION
 
-  app.register(mercurius, {
-    schema: `
-    directive @filterData (disallow: String!) on FIELD_DEFINITION
+    type Message {
+      id: ID! @filterData (disallow: "no-read-notes")
+      message: String!
+      notes: String! 
+    }
+    
+    type Query {
+      publicMessages: [Message!]
+    }`
+    }, {
+      name: 'should fail on Int type',
+      schema: `
+        directive @filterData (disallow: String!) on FIELD_DEFINITION
 
     type Message {
       message: String!
@@ -309,40 +322,74 @@ test('can not filter out on a Int! type', async (t) => {
     
     type Query {
       publicMessages: [Message!]
+    }`
+    }, {
+      name: 'should fail on Boolean type',
+      schema: `
+        directive @filterData (disallow: String!) on FIELD_DEFINITION
+
+    type Message {
+      message: String!
+      notes: Boolean! @filterData (disallow: "no-read-notes")
     }
-    `,
-    resolvers: {
-      Query: {
-        publicMessages: async (parent, args, context, info) => {
-          return messages
+    
+    type Query {
+      publicMessages: [Message!]
+    }`
+    }, {
+      name: 'should fail on Float type',
+      schema: `
+        directive @filterData (disallow: String!) on FIELD_DEFINITION
+
+    type Message {
+      message: String!
+      notes: Float! @filterData (disallow: "no-read-notes")
+    }
+    
+    type Query {
+      publicMessages: [Message!]
+    }`
+    }].forEach(({ name, schema }) => {
+    t.test(name, async (t) => {
+      const app = Fastify()
+      t.teardown(app.close.bind(app))
+
+      app.register(mercurius, {
+        schema,
+        resolvers: {
+          Query: {
+            publicMessages: async (parent, args, context, info) => {
+              return messages
+            }
+          }
         }
+      })
+
+      app.register(mercuriusAuth, {
+        authContext: hasPermissionContext,
+        applyPolicy: hasFilterPolicy,
+        outputPolicyErrors: {
+          enabled: false,
+          valueOverride: 'bar'
+        },
+        authDirective: 'filterData'
+      })
+
+      try {
+        await app.inject({
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-permission': 'no-read-notes'
+          },
+          url: '/graphql',
+          body: JSON.stringify({ query })
+        })
+      } catch (error) {
+        t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('You can not do a replacement on a GraphQL scalar type that is not a String'))
       }
-    }
-  })
-
-  app.register(mercuriusAuth, {
-    authContext: hasPermissionContext,
-    applyPolicy: hasFilterPolicy,
-    outputPolicyErrors: {
-      enabled: false,
-      valueOverride: 'bar'
-    },
-    authDirective: 'filterData'
-  })
-
-  try {
-    await app.inject({
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-permission': 'no-read-notes'
-      },
-      url: '/graphql',
-      body: JSON.stringify({ query })
     })
-  } catch (error) {
-    t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('You can not do a replacement on a GraphQL scalar type that is not a String'))
-  }
+  })
 })
 
 function hasPermissionContext (context) {
