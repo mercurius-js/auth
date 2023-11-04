@@ -1,6 +1,8 @@
 # Schema Replacement
 
-The auth directive can be used as an identifier to protact a GraphQL String Scalar field within the GraphQL schema to do a replacement of the output if the policy allows it.
+The auth directive can be used as an identifier
+to protect a GraphQL String Scalar field within the GraphQL schema
+to do a replacement of the output if the policy allows it.
 
 This is designed to potentially obfuscate your database output to the end user without having to do this on the frontend. Useful to prevent people who may or may not have a role or matching the required "profile" to not see what is being sent from the server.
 
@@ -138,5 +140,6 @@ This will replace the `notes` schema if it matches the regex for removing the fi
 
 You can only do the replacement on String Scalar types.
 
-Please note that you create a custom Scalar type, however it still must be registered as a String otherwise it will fail.
+Please note that you create a custom Scalar type, however,
+it still must be registered as a String otherwise it will fail.
 
