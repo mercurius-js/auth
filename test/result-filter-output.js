@@ -4,7 +4,7 @@ const { test } = require('tap')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
-const { MER_AUTH_ERR_FAILED_POLICY_CHECK } = require('../lib/errors')
+const { MER_AUTH_ERR_FAILED_POLICY_CHECK, MER_AUTH_ERR_USAGE_ERROR } = require('../lib/errors')
 
 const messages = [
   {
@@ -74,6 +74,56 @@ test('remove valid notes results and replace it with empty string without any er
   t.plan(data.publicMessages.length)
   for (let i = 0; i < data.publicMessages.length; i++) {
     t.ok((data.publicMessages[i].notes === null), 'notes are null')
+  }
+})
+
+test('on the resolver level, error out', async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @filterData (disallow: String!) on FIELD_DEFINITION
+
+    type Message {
+      message: String!
+      notes: String 
+    }
+    
+    type Query {
+      publicMessages: [Message!] @filterData (disallow: "no-read-notes")
+    }
+    `,
+    resolvers: {
+      Query: {
+        publicMessages: async (parent, args, context, info) => {
+          return messages
+        }
+      }
+    }
+  })
+
+  app.register(mercuriusAuth, {
+    authContext: hasPermissionContext,
+    applyPolicy: hasFilterPolicy,
+    outputPolicyErrors: {
+      enabled: false
+    },
+    filterSchema: true,
+    authDirective: 'filterData'
+  })
+  try {
+    await app.inject({
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-permission': 'no-read-notes'
+      },
+      url: '/graphql',
+      body: JSON.stringify({ query })
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_USAGE_ERROR('Replacement can not happen on a resolver. Only a field.'))
   }
 })
 
@@ -294,6 +344,57 @@ test('remove valid notes results and if the function returns anything other than
   }
 })
 
+test('error out during the policy check', async (t) => {
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+
+  app.register(mercurius, {
+    schema: `
+    directive @filterData (disallow: String!) on FIELD_DEFINITION
+
+    type Message {
+      message: String!
+      notes: String! @filterData (disallow: "no-read-notes")
+    }
+    
+    type Query {
+      publicMessages: [Message!]
+    }
+    `,
+    resolvers: {
+      Query: {
+        publicMessages: async (parent, args, context, info) => {
+          return messages
+        }
+      }
+    }
+  })
+
+  app.register(mercuriusAuth, {
+    authContext: hasPermissionContext,
+    applyPolicy: hasFilterPolicyReturnError,
+    outputPolicyErrors: {
+      enabled: false,
+      valueOverride: 'foo'
+    },
+    authDirective: 'filterData'
+  })
+
+  try {
+    await app.inject({
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-permission': 'no-read-notes'
+      },
+      url: '/graphql',
+      body: JSON.stringify({ query })
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('Replacement must be a valid string.'))
+  }
+})
+
 test('can not filter and replace on a type that is not a String type', async (t) => {
   ;[
     {
@@ -402,4 +503,14 @@ async function hasFilterPolicy (authDirectiveAST, parent, args, context, info) {
   const notNeeded = authDirectiveAST.arguments.find(arg => arg.name.value === 'disallow').value.value
 
   return !context.auth.permission.includes(notNeeded)
+}
+
+async function hasFilterPolicyReturnError (authDirectiveAST, parent, args, context, info) {
+  const notNeeded = authDirectiveAST.arguments.find(arg => arg.name.value === 'disallow').value.value
+
+  const policyPassed = !context.auth.permission.includes(notNeeded)
+  if (!policyPassed) {
+    // This is the key bit
+    return new MER_AUTH_ERR_FAILED_POLICY_CHECK(info.fieldName)
+  }
 }
