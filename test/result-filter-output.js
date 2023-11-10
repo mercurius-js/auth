@@ -69,12 +69,13 @@ test('remove valid notes results and replace it with empty string without any er
     body: JSON.stringify({ query })
   })
 
-  const { data } = JSON.parse(response.body)
+  const { data, errors } = JSON.parse(response.body)
 
-  t.plan(data.publicMessages.length)
+  t.plan(data.publicMessages.length + 1)
   for (let i = 0; i < data.publicMessages.length; i++) {
     t.ok((data.publicMessages[i].notes === null), 'notes are null')
   }
+  t.ok((typeof errors === 'undefined'), 'no error block')
 })
 
 test('on the resolver level, error out', async (t) => {
@@ -173,12 +174,13 @@ test("ensure that a user who doesn't have the role to filter, still sees the not
     body: JSON.stringify({ query })
   })
 
-  const { data } = JSON.parse(response.body)
+  const { data, errors } = JSON.parse(response.body)
 
-  t.plan(data.publicMessages.length)
+  t.plan(data.publicMessages.length + 1)
   for (let i = 0; i < data.publicMessages.length; i++) {
     t.ok((data.publicMessages[i].notes !== null), 'notes are valid')
   }
+  t.ok((typeof errors === 'undefined'), 'no error block')
 })
 
 test('remove valid notes results and replace it with "foo" without any errors, using straight replace', async (t) => {
@@ -227,12 +229,13 @@ test('remove valid notes results and replace it with "foo" without any errors, u
     body: JSON.stringify({ query })
   })
 
-  const { data } = JSON.parse(response.body)
+  const { data, errors } = JSON.parse(response.body)
 
-  t.plan(data.publicMessages.length)
+  t.plan(data.publicMessages.length + 1)
   for (let i = 0; i < data.publicMessages.length; i++) {
     t.ok((data.publicMessages[i].notes === 'foo'), 'notes do equal foo')
   }
+  t.ok((typeof errors === 'undefined'), 'no error block')
 })
 
 test('remove valid notes results and replace it with "foo" without any errors, using function method', async (t) => {
@@ -283,12 +286,13 @@ test('remove valid notes results and replace it with "foo" without any errors, u
     body: JSON.stringify({ query })
   })
 
-  const { data } = JSON.parse(response.body)
+  const { data, errors } = JSON.parse(response.body)
 
-  t.plan(data.publicMessages.length)
+  t.plan(data.publicMessages.length + 1)
   for (let i = 0; i < data.publicMessages.length; i++) {
     t.ok((data.publicMessages[i].notes === 'foo'), 'notes do equal foo')
   }
+  t.ok((typeof errors === 'undefined'), 'no error block')
 })
 
 test('remove valid notes results and if the function returns anything other than a string, error out', async (t) => {
