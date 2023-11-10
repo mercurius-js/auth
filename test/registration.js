@@ -179,6 +179,32 @@ test('registration - should error if outputPolicyErrors.valueOverride is not a s
   }
 })
 
+test('registration - should error if outputPolicyErrors.enabled is set', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+
+  try {
+    await app.register(mercuriusAuth, {
+      authContext: () => {},
+      applyPolicy: () => {},
+      outputPolicyErrors: {
+        enabled: true,
+        valueOverride: 'foo-bar'
+      },
+      filterSchema: true,
+      authDirective: 'filterData'
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.enabled must be set to false if your a doing a replacement.'))
+  }
+})
+
 test('registration - should error if outputPolicyErrors.valueOverride is not a string or function, array check', async (t) => {
   t.plan(1)
 
