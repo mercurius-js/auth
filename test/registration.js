@@ -102,6 +102,135 @@ test('registration - should error if authDirective not specified', async (t) => 
   }
 })
 
+test('registration - should error if outputPolicyErrors.enabled is not a boolean', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+
+  try {
+    await app.register(mercuriusAuth, {
+      authContext: () => {},
+      applyPolicy: () => {},
+      outputPolicyErrors: {
+        enabled: 'true'
+      },
+      filterSchema: true,
+      authDirective: 'filterData'
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.enabled must be a boolean'))
+  }
+})
+
+test('registration - should error if outputPolicyErrors.valueOverride is not a string or function, integer check', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+
+  try {
+    await app.register(mercuriusAuth, {
+      authContext: () => {},
+      applyPolicy: () => {},
+      outputPolicyErrors: {
+        enabled: false,
+        valueOverride: 1
+      },
+      filterSchema: true,
+      authDirective: 'filterData'
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.valueOverride must be either a string or a function that returns a string.'))
+  }
+})
+
+test('registration - should error if outputPolicyErrors.valueOverride is not a string or function, object check', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+
+  try {
+    await app.register(mercuriusAuth, {
+      authContext: () => {},
+      applyPolicy: () => {},
+      outputPolicyErrors: {
+        enabled: false,
+        valueOverride: {}
+      },
+      filterSchema: true,
+      authDirective: 'filterData'
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.valueOverride must be either a string or a function that returns a string.'))
+  }
+})
+
+test('registration - should error if outputPolicyErrors.enabled is set', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+
+  try {
+    await app.register(mercuriusAuth, {
+      authContext: () => {},
+      applyPolicy: () => {},
+      outputPolicyErrors: {
+        enabled: true,
+        valueOverride: 'foo-bar'
+      },
+      filterSchema: true,
+      authDirective: 'filterData'
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.enabled must be set to false if your a doing a replacement.'))
+  }
+})
+
+test('registration - should error if outputPolicyErrors.valueOverride is not a string or function, array check', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.teardown(app.close.bind(app))
+  app.register(mercurius, {
+    schema,
+    resolvers
+  })
+
+  try {
+    await app.register(mercuriusAuth, {
+      authContext: () => {},
+      applyPolicy: () => {},
+      outputPolicyErrors: {
+        enabled: false,
+        valueOverride: []
+      },
+      filterSchema: true,
+      authDirective: 'filterData'
+    })
+  } catch (error) {
+    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.valueOverride must be either a string or a function that returns a string.'))
+  }
+})
+
 test('registration - should register the plugin', async (t) => {
   t.plan(1)
 
