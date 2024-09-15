@@ -357,32 +357,6 @@ test('gateway - should protect the schema, user object protected', async (t) => 
           '_entities',
           '1'
         ]
-      },
-      {
-        message: 'Failed auth policy check on User',
-        locations: [
-          {
-            line: 2,
-            column: 3
-          }
-        ],
-        path: [
-          '_entities',
-          '0'
-        ]
-      },
-      {
-        message: 'Failed auth policy check on User',
-        locations: [
-          {
-            line: 2,
-            column: 3
-          }
-        ],
-        path: [
-          '_entities',
-          '1'
-        ]
       }
     ]
   })
