@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
@@ -74,10 +74,8 @@ const resolvers = {
 }
 
 test('basic - should protect the schema and not affect queries when everything is okay', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -118,7 +116,7 @@ test('basic - should protect the schema and not affect queries when everything i
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: 4,
       six: 6,
@@ -152,10 +150,8 @@ test('basic - should protect the schema and not affect queries when everything i
 })
 
 test('basic - should protect the schema and error accordingly', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -196,7 +192,7 @@ test('basic - should protect the schema and error accordingly', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: null,
       six: null,
@@ -219,15 +215,13 @@ test('basic - should protect the schema and error accordingly', async (t) => {
       { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
       { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
       { message: 'Failed auth policy check on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
-      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
-      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
+      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', '0', 'private'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 5 }], path: ['messages', '1', 'private'] }
     ]
   })
 })
 
 test('basic - should work alongside existing directives', async (t) => {
-  t.plan(1)
-
   const schema = `
     directive @auth(
       requires: Role = ADMIN,
@@ -267,7 +261,7 @@ test('basic - should work alongside existing directives', async (t) => {
 }`
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -292,7 +286,7 @@ test('basic - should work alongside existing directives', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: null,
       six: null,
@@ -306,8 +300,6 @@ test('basic - should work alongside existing directives', async (t) => {
 })
 
 test('basic - should handle when no fields within a type are allowed', async (t) => {
-  t.plan(1)
-
   const schema = `
   directive @auth(
     requires: Role = ADMIN,
@@ -368,7 +360,7 @@ test('basic - should handle when no fields within a type are allowed', async (t)
 }`
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -393,7 +385,7 @@ test('basic - should handle when no fields within a type are allowed', async (t)
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: null,
       six: null,
@@ -412,19 +404,17 @@ test('basic - should handle when no fields within a type are allowed', async (t)
     errors: [
       { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
       { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
-      { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 5 }], path: ['messages', 0, 'title'] },
-      { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 5 }], path: ['messages', 0, 'private'] },
-      { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 5 }], path: ['messages', 1, 'title'] },
-      { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 5 }], path: ['messages', 1, 'private'] }
+      { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 5 }], path: ['messages', '0', 'title'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 5 }], path: ['messages', '0', 'private'] },
+      { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 5 }], path: ['messages', '1', 'title'] },
+      { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 5 }], path: ['messages', '1', 'private'] }
     ]
   })
 })
 
 test('basic - should handle custom errors thrown in applyPolicy', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -468,7 +458,7 @@ test('basic - should handle custom errors thrown in applyPolicy', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: null,
       six: null,
@@ -491,17 +481,15 @@ test('basic - should handle custom errors thrown in applyPolicy', async (t) => {
       { message: 'custom auth error on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
       { message: 'custom auth error on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
       { message: 'custom auth error on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
-      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
-      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', '0', 'private'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', '1', 'private'] }
     ]
   })
 })
 
 test('basic - should handle custom errors returned in applyPolicy', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -545,7 +533,7 @@ test('basic - should handle custom errors returned in applyPolicy', async (t) =>
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: null,
       six: null,
@@ -568,17 +556,15 @@ test('basic - should handle custom errors returned in applyPolicy', async (t) =>
       { message: 'custom auth error on add', locations: [{ line: 2, column: 3 }], path: ['four'] },
       { message: 'custom auth error on add', locations: [{ line: 3, column: 3 }], path: ['six'] },
       { message: 'custom auth error on adminMessages', locations: [{ line: 10, column: 3 }], path: ['adminMessages'] },
-      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 0, 'private'] },
-      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', 1, 'private'] }
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', '0', 'private'] },
+      { message: 'custom auth error on private', locations: [{ line: 8, column: 5 }], path: ['messages', '1', 'private'] }
     ]
   })
 })
 
 test('basic - should handle when auth context is not defined', async (t) => {
-  t.plan(3)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -595,8 +581,8 @@ test('basic - should handle when auth context is not defined', async (t) => {
     context.other = {
       identity: context.reply.request.headers['x-user']
     }
-    t.type(context.auth, 'undefined')
-    t.ok('called')
+    t.assert.strictEqual(typeof context.auth, 'undefined')
+    t.assert.ok('called')
   })
 
   const query = `query {
@@ -622,7 +608,7 @@ test('basic - should handle when auth context is not defined', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: 4,
       six: 6,
@@ -656,10 +642,8 @@ test('basic - should handle when auth context is not defined', async (t) => {
 })
 
 test('basic - should support jit', async (t) => {
-  t.plan(2)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -702,7 +686,7 @@ test('basic - should support jit', async (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         four: 4,
         six: 6,
@@ -744,7 +728,7 @@ test('basic - should support jit', async (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         four: 4,
         six: 6,
@@ -779,8 +763,6 @@ test('basic - should support jit', async (t) => {
 })
 
 test('basic - should work at type level with field resolvers', async (t) => {
-  t.plan(1)
-
   const schema = `
     directive @auth(
       requires: Role = ADMIN,
@@ -823,7 +805,7 @@ test('basic - should work at type level with field resolvers', async (t) => {
   }`
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -848,7 +830,7 @@ test('basic - should work at type level with field resolvers', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       getUser: {
         id: 1,
@@ -859,8 +841,6 @@ test('basic - should work at type level with field resolvers', async (t) => {
 })
 
 test('basic - should work at type level with nested directive', async (t) => {
-  t.plan(1)
-
   const schema = `
     directive @auth(
       requires: Role = ADMIN,
@@ -905,7 +885,7 @@ test('basic - should work at type level with nested directive', async (t) => {
   }`
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -941,7 +921,7 @@ test('basic - should work at type level with nested directive', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       getUser: {
         id: 1,
@@ -956,8 +936,6 @@ test('basic - should work at type level with nested directive', async (t) => {
 })
 
 test('basic - should error for all fields in type', async (t) => {
-  t.plan(1)
-
   const schema = `
     directive @auth(
       requires: Role = ADMIN,
@@ -999,7 +977,7 @@ test('basic - should error for all fields in type', async (t) => {
   }`
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -1024,7 +1002,7 @@ test('basic - should error for all fields in type', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       getUser: {
         id: null,
@@ -1039,8 +1017,6 @@ test('basic - should error for all fields in type', async (t) => {
 })
 
 test('basic - should work at type level, entity query', async (t) => {
-  t.plan(2)
-
   const schema = `
     directive @auth(
       requires: Role = ADMIN,
@@ -1101,7 +1077,7 @@ test('basic - should work at type level, entity query', async (t) => {
   }`
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercuriusFederationPlugin, {
     schema,
@@ -1137,7 +1113,7 @@ test('basic - should work at type level, entity query', async (t) => {
     body: JSON.stringify({ variables, query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       _entities: [
         {
@@ -1156,7 +1132,7 @@ test('basic - should work at type level, entity query', async (t) => {
     body: JSON.stringify({ variables, query })
   })
 
-  t.same(JSON.parse(responseBad.body), {
+  t.assert.deepStrictEqual(JSON.parse(responseBad.body), {
     data: {
       _entities: [
         null
@@ -1181,10 +1157,8 @@ test('basic - should work at type level, entity query', async (t) => {
 })
 
 test('basic - should be able to turn off directive based auth by setting mode to "external"', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -1226,7 +1200,7 @@ test('basic - should be able to turn off directive based auth by setting mode to
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: 4,
       six: 6,
