@@ -1,6 +1,6 @@
 'use strict'
 
-const t = require('tap')
+const { describe, test } = require('node:test')
 const Fastify = require('fastify')
 const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
 const mercuriusGateway = require('@mercuriusjs/gateway')
@@ -119,7 +119,7 @@ async function createTestGatewayServer (t) {
   const [postService, postServicePort] = await createTestService(t, postServiceSchema, postServiceResolvers)
 
   const gateway = Fastify()
-  t.teardown(async () => {
+  t.after(async () => {
     await gateway.close()
     await userService.close()
     await postService.close()
@@ -175,14 +175,9 @@ async function createTestGatewayServer (t) {
   return gateway
 }
 
-t.test('gateway', t => {
-  t.plan(1)
-
-  t.test('external policy', t => {
-    t.plan(2)
-
-    t.test('gateway - should protect the schema as normal', async (t) => {
-      t.plan(1)
+describe('gateway', () => {
+  describe('external policy', () => {
+    test('gateway - should protect the schema as normal', async (t) => {
       const app = await createTestGatewayServer(t)
 
       const query = `query {
@@ -211,7 +206,7 @@ t.test('gateway', t => {
         body: JSON.stringify({ query })
       })
 
-      t.same(JSON.parse(res.body), {
+      t.assert.deepStrictEqual(JSON.parse(res.body), {
         data: {
           me: {
             id: 'u1',
@@ -243,8 +238,7 @@ t.test('gateway', t => {
       })
     })
 
-    t.test('gateway - should protect the schema, user object protected', async (t) => {
-      t.plan(1)
+    test('gateway - should protect the schema, user object protected', async (t) => {
       const app = await createTestGatewayServer(t)
 
       const query = `query {
@@ -271,7 +265,7 @@ t.test('gateway', t => {
         body: JSON.stringify({ query })
       })
 
-      t.same(JSON.parse(res.body), {
+      t.assert.deepStrictEqual(JSON.parse(res.body), {
         data: {
           me: null,
           topPosts: [
