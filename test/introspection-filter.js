@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { describe, test, after } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { getIntrospectionQuery } = require('graphql')
@@ -101,9 +101,9 @@ const resolvers = {
   }
 }
 
-test('should be able to access the query to determine that users have sufficient access to run related operations', async (t) => {
+describe('should be able to access the query to determine that users have sufficient access to run related operations', async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -129,7 +129,7 @@ test('should be able to access the query to determine that users have sufficient
     authDirective: 'hasPermission'
   })
 
-  ;[
+  const tests = [
     {
       name: 'simple not introspection query',
       query: '{ publicMessages { title } }',
@@ -304,15 +304,14 @@ test('should be able to access the query to determine that users have sufficient
         'x-permission': 'see-all'
       },
       result (t, responseJson) {
-        t.plan(4)
         const { types } = responseJson.data.__schema
 
-        t.notOk(types.find(type => type.name === 'AdminMessage'), 'the AdminMessage type has been filtered')
+        t.assert.ok(!types.find(type => type.name === 'AdminMessage'), 'the AdminMessage type has been filtered')
 
         const objMessage = types.find(type => type.name === 'Message')
-        t.ok(objMessage, 'the Message type is present')
-        t.ok(objMessage.fields.find(field => field.name === 'password'), 'role is right')
-        t.notOk(objMessage.fields.find(field => field.name === 'notes'), 'doesn\'t have the role "notes"')
+        t.assert.ok(objMessage, 'the Message type is present')
+        t.assert.ok(objMessage.fields.find(field => field.name === 'password'), 'role is right')
+        t.assert.ok(!objMessage.fields.find(field => field.name === 'notes'), 'doesn\'t have the role "notes"')
       }
     },
     {
@@ -324,20 +323,20 @@ test('should be able to access the query to determine that users have sufficient
         'x-permission': 'see-all,notes'
       },
       result (t, responseJson) {
-        t.plan(4)
         const { types } = responseJson.data.__schema
 
-        t.notOk(types.find(type => type.name === 'AdminMessage'), 'the AdminMessage type has been filtered')
+        t.assert.ok(!types.find(type => type.name === 'AdminMessage'), 'the AdminMessage type has been filtered')
 
         const objMessage = types.find(type => type.name === 'Message')
-        t.ok(objMessage, 'the Message type is present')
-        t.ok(objMessage.fields.find(field => field.name === 'password'), 'role is right')
-        t.ok(objMessage.fields.find(field => field.name === 'notes'), 'role is right')
+        t.assert.ok(objMessage, 'the Message type is present')
+        t.assert.ok(objMessage.fields.find(field => field.name === 'password'), 'role is right')
+        t.assert.ok(objMessage.fields.find(field => field.name === 'notes'), 'role is right')
       }
     }
-  ].forEach(({ name, query, result, headers }) => {
-    t.test(name, async t => {
-      t.plan(1)
+  ]
+
+  for (const { name, query, result, headers } of tests) {
+    test(name, async t => {
       const response = await app.inject({
         method: 'POST',
         headers: { 'content-type': 'application/json', ...headers },
@@ -346,19 +345,17 @@ test('should be able to access the query to determine that users have sufficient
       })
 
       if (typeof result !== 'function') {
-        t.same(response.json(), result)
+        t.assert.deepStrictEqual(response.json(), result)
       } else {
-        t.test('response', t => {
-          result(t, response.json())
-        })
+        result(t, response.json())
       }
     })
-  })
+  }
 })
 
 test('the single filter preExecution lets the app crash', async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -379,13 +376,13 @@ test('the single filter preExecution lets the app crash', async (t) => {
   try {
     await app.ready()
   } catch (error) {
-    t.equal(error.message, 'boom')
+    t.assert.strictEqual(error.message, 'boom')
   }
 })
 
 test("check directive's arguments on FIELD_DEFINITION", async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -411,11 +408,11 @@ test("check directive's arguments on FIELD_DEFINITION", async (t) => {
         // this is the schema filtering execution
         schemaFilteringRun = { authDirectiveAST, parent, args, context, info }
       } else {
-        t.same(schemaFilteringRun.authDirectiveAST, authDirectiveAST, 'authDirectiveAST')
-        t.notOk(schemaFilteringRun.parent, 'parent')
-        t.notOk(schemaFilteringRun.args, 'args')
-        t.same(schemaFilteringRun.context, context, 'context')
-        // t.same(schemaFilteringRun.info, info, 'info', { skip: 1, todo: 1 })
+        t.assert.deepStrictEqual(schemaFilteringRun.authDirectiveAST, authDirectiveAST, 'authDirectiveAST')
+        t.assert.ok(!schemaFilteringRun.parent, 'parent')
+        t.assert.ok(!schemaFilteringRun.args, 'args')
+        t.assert.deepStrictEqual(schemaFilteringRun.context, context, 'context')
+        // t.assert.deepStrictEqual(schemaFilteringRun.info, info, 'info', { skip: 1, todo: 1 })
       }
       return true
     },
@@ -434,13 +431,13 @@ test("check directive's arguments on FIELD_DEFINITION", async (t) => {
     url: '/graphql',
     body: JSON.stringify({ query })
   })
-  t.equal(response.statusCode, 200)
-  t.notOk(response.json().errors)
+  t.assert.strictEqual(response.statusCode, 200)
+  t.assert.ok(!response.json().errors)
 })
 
 test("check directive's arguments on OBJECT", async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -469,11 +466,11 @@ test("check directive's arguments on OBJECT", async (t) => {
         // this is the schema filtering execution
         schemaFilteringRun = { authDirectiveAST, parent, args, context, info }
       } else {
-        t.same(schemaFilteringRun.authDirectiveAST, authDirectiveAST, 'authDirectiveAST')
-        t.notOk(schemaFilteringRun.parent, 'parent')
-        t.notOk(schemaFilteringRun.args, 'args')
-        t.same(schemaFilteringRun.context, context, 'context')
-        t.same(schemaFilteringRun.info.fieldName, '__typePolicy', 'info')
+        t.assert.deepStrictEqual(schemaFilteringRun.authDirectiveAST, authDirectiveAST, 'authDirectiveAST')
+        t.assert.ok(!schemaFilteringRun.parent, 'parent')
+        t.assert.ok(!schemaFilteringRun.args, 'args')
+        t.assert.deepStrictEqual(schemaFilteringRun.context, context, 'context')
+        t.assert.deepStrictEqual(schemaFilteringRun.info.fieldName, '__typePolicy', 'info')
       }
       return true
     },
@@ -492,8 +489,8 @@ test("check directive's arguments on OBJECT", async (t) => {
     url: '/graphql',
     body: JSON.stringify({ query })
   })
-  t.equal(response.statusCode, 200)
-  t.notOk(response.json().errors)
+  t.assert.strictEqual(response.statusCode, 200)
+  t.assert.ok(!response.json().errors)
 })
 
 function authContext (context) {
