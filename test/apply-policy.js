@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { GraphQLSchema } = require('graphql')
@@ -10,7 +10,7 @@ test('apply policy - should provide authDirectiveAST', async (t) => {
   t.plan(4)
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
   directive @auth on OBJECT | FIELD_DEFINITION
@@ -45,9 +45,9 @@ test('apply policy - should provide authDirectiveAST', async (t) => {
       }
     },
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      t.equal(authDirectiveAST.kind, 'Directive')
-      t.equal(authDirectiveAST.name.value, 'auth')
-      t.same(authDirectiveAST.arguments, [])
+      t.assert.strictEqual(authDirectiveAST.kind, 'Directive')
+      t.assert.strictEqual(authDirectiveAST.name.value, 'auth')
+      t.assert.deepStrictEqual(authDirectiveAST.arguments, [])
       return true
     },
     authDirective: 'auth'
@@ -65,7 +65,7 @@ test('apply policy - should provide authDirectiveAST', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: 4,
       subtract: 0
@@ -74,10 +74,8 @@ test('apply policy - should provide authDirectiveAST', async (t) => {
 })
 
 test('apply policy - should provide auth on context', async (t) => {
-  t.plan(2)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
   directive @auth on OBJECT | FIELD_DEFINITION
@@ -112,7 +110,7 @@ test('apply policy - should provide auth on context', async (t) => {
       }
     },
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      t.same(context.auth, { identity: 'ADMIN' })
+      t.assert.deepStrictEqual(context.auth, { identity: 'ADMIN' })
       return true
     },
     authDirective: 'auth'
@@ -130,7 +128,7 @@ test('apply policy - should provide auth on context', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: 4,
       subtract: 0
@@ -139,10 +137,8 @@ test('apply policy - should provide auth on context', async (t) => {
 })
 
 test('apply policy - should have access to parent', async (t) => {
-  t.plan(2)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
   directive @auth on OBJECT | FIELD_DEFINITION
@@ -179,7 +175,7 @@ test('apply policy - should have access to parent', async (t) => {
       }
     },
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      t.same(parent, { title: 'one', private: 'private one' })
+      t.assert.deepStrictEqual(parent, { title: 'one', private: 'private one' })
       return true
     },
     authDirective: 'auth'
@@ -199,7 +195,7 @@ test('apply policy - should have access to parent', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       messages: [
         {
@@ -212,10 +208,8 @@ test('apply policy - should have access to parent', async (t) => {
 })
 
 test('apply policy - should have access to args', async (t) => {
-  t.plan(2)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
   directive @auth on OBJECT | FIELD_DEFINITION
@@ -250,7 +244,7 @@ test('apply policy - should have access to args', async (t) => {
       }
     },
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      t.same(args, { x: 2, y: 2 })
+      t.assert.deepStrictEqual(args, { x: 2, y: 2 })
       return true
     },
     authDirective: 'auth'
@@ -268,7 +262,7 @@ test('apply policy - should have access to args', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: 4,
       subtract: 0
@@ -280,7 +274,7 @@ test('apply policy - should have access to info', async (t) => {
   t.plan(4)
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
   directive @auth on OBJECT | FIELD_DEFINITION
@@ -315,9 +309,9 @@ test('apply policy - should have access to info', async (t) => {
       }
     },
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      t.equal(info.fieldName, 'add')
-      t.type(info.schema, GraphQLSchema)
-      t.same(info.path, { prev: undefined, key: 'four', typename: 'Query' })
+      t.assert.strictEqual(info.fieldName, 'add')
+      t.assert.strictEqual(info.schema.constructor.name, GraphQLSchema.name)
+      t.assert.deepStrictEqual(info.path, { prev: undefined, key: 'four', typename: 'Query' })
       return true
     },
     authDirective: 'auth'
@@ -335,7 +329,7 @@ test('apply policy - should have access to info', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       four: 4,
       subtract: 0
