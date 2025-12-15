@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
@@ -75,10 +75,8 @@ async function applyPolicy (authDirectiveAST, parent, args, context, info) {
 }
 
 test('should be able to access the query to determine that users have sufficient access to run related operations', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -105,7 +103,7 @@ test('should be able to access the query to determine that users have sufficient
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       messages: [
         {
@@ -122,10 +120,8 @@ test('should be able to access the query to determine that users have sufficient
 })
 
 test('should be able to access the query to determine that users have insufficient access to run related operations', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -152,7 +148,7 @@ test('should be able to access the query to determine that users have insufficie
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       messages: null
     },
@@ -174,10 +170,8 @@ test('should be able to access the query to determine that users have insufficie
 })
 
 test('should support being registered multiple times', async (t) => {
-  t.plan(2)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
   directive @auth1 on OBJECT | FIELD_DEFINITION
@@ -240,7 +234,7 @@ test('should support being registered multiple times', async (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         add: 3,
         subtract: null
@@ -270,7 +264,7 @@ test('should support being registered multiple times', async (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         add: 3,
         subtract: 1
@@ -280,10 +274,8 @@ test('should support being registered multiple times', async (t) => {
 })
 
 test('register multiple times readme example', async (t) => {
-  t.plan(4)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
   directive @hasRole(
@@ -357,7 +349,7 @@ test('register multiple times readme example', async (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         read: null
       },
@@ -381,7 +373,7 @@ test('register multiple times readme example', async (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         read: ['txt']
       }
@@ -396,7 +388,7 @@ test('register multiple times readme example', async (t) => {
       body: JSON.stringify({ query: mutation })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         publish: null
       },
@@ -420,7 +412,7 @@ test('register multiple times readme example', async (t) => {
       body: JSON.stringify({ query: mutation })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         publish: 42
       }
@@ -432,7 +424,7 @@ test('the authContext must be executed in serial', async (t) => {
   t.plan(8)
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
   directive @auth1 on FIELD_DEFINITION
@@ -473,13 +465,13 @@ test('the authContext must be executed in serial', async (t) => {
 
   app.register(mercuriusAuth, {
     authContext (context) {
-      t.notOk(context.auth, 'this is the first hook executed')
+      t.assert.ok(!context.auth, 'this is the first hook executed')
       return {
         identity: context.reply.request.headers['x-user']
       }
     },
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      t.same(context.auth, userType.shift())
+      t.assert.deepStrictEqual(context.auth, userType.shift())
       return context.auth.identity.includes('user')
     },
     authDirective: 'auth1'
@@ -487,7 +479,7 @@ test('the authContext must be executed in serial', async (t) => {
 
   app.register(mercuriusAuth, {
     authContext (context) {
-      t.ok(context.auth.identity, 'this is the second hook executed')
+      t.assert.ok(context.auth.identity, 'this is the second hook executed')
       return {
         foo: 'bar'
       }
@@ -511,7 +503,7 @@ test('the authContext must be executed in serial', async (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         add: 3,
         subtract: null
@@ -541,7 +533,7 @@ test('the authContext must be executed in serial', async (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         add: 3,
         subtract: 1
