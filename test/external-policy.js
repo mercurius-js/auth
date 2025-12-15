@@ -1,6 +1,6 @@
 'use strict'
 
-const t = require('tap')
+const { describe, test } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
@@ -62,14 +62,12 @@ const resolvers = {
   }
 }
 
-t.test('external policy', t => {
-  t.plan(8)
-
-  t.test('should protect the schema and not affect queries when everything is okay', async (t) => {
+describe('external policy', () => {
+  test('should protect the schema and not affect queries when everything is okay', async (t) => {
     t.plan(8)
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -82,7 +80,7 @@ t.test('external policy', t => {
         }
       },
       async applyPolicy (policy, parent, args, context, info) {
-        t.ok(policy)
+        t.assert.ok(policy)
         return context.auth.identity.includes(policy.requires)
       },
       mode: 'external',
@@ -122,7 +120,7 @@ t.test('external policy', t => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         four: 4,
         six: 6,
@@ -155,12 +153,9 @@ t.test('external policy', t => {
     })
   })
 
-  t.test('should protect the schema and error accordingly', async (t) => {
-    t.plan(1)
-
+  test('should protect the schema and error accordingly', async (t) => {
     const app = Fastify()
-    t.teardown(app.close.bind(app))
-
+    t.after(() => app.close())
     app.register(mercurius, {
       schema,
       resolvers
@@ -211,7 +206,7 @@ t.test('external policy', t => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         four: null,
         six: null,
@@ -234,15 +229,13 @@ t.test('external policy', t => {
         { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 7 }], path: ['four'] },
         { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 7 }], path: ['six'] },
         { message: 'Failed auth policy check on adminMessages', locations: [{ line: 10, column: 7 }], path: ['adminMessages'] },
-        { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 9 }], path: ['messages', 0, 'private'] },
-        { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 9 }], path: ['messages', 1, 'private'] }
+        { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 9 }], path: ['messages', '0', 'private'] },
+        { message: 'Failed auth policy check on private', locations: [{ line: 8, column: 9 }], path: ['messages', '1', 'private'] }
       ]
     })
   })
 
-  t.test('should handle when no fields within a type are allowed', async (t) => {
-    t.plan(1)
-
+  test('should handle when no fields within a type are allowed', async (t) => {
     const schema = `  
     type Message {
       title: String
@@ -292,7 +285,7 @@ t.test('external policy', t => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -326,7 +319,7 @@ t.test('external policy', t => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         four: null,
         six: null,
@@ -345,20 +338,17 @@ t.test('external policy', t => {
       errors: [
         { message: 'Failed auth policy check on add', locations: [{ line: 2, column: 7 }], path: ['four'] },
         { message: 'Failed auth policy check on add', locations: [{ line: 3, column: 7 }], path: ['six'] },
-        { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 9 }], path: ['messages', 0, 'title'] },
-        { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 9 }], path: ['messages', 0, 'private'] },
-        { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 9 }], path: ['messages', 1, 'title'] },
-        { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 9 }], path: ['messages', 1, 'private'] }
+        { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 9 }], path: ['messages', '0', 'title'] },
+        { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 9 }], path: ['messages', '0', 'private'] },
+        { message: 'Failed auth policy check on title', locations: [{ line: 6, column: 9 }], path: ['messages', '1', 'title'] },
+        { message: 'Failed auth policy check on private', locations: [{ line: 7, column: 9 }], path: ['messages', '1', 'private'] }
       ]
     })
   })
 
-  t.test('should support jit', async (t) => {
-    t.plan(2)
-
+  test('should support jit', async (t) => {
     const app = Fastify()
-    t.teardown(app.close.bind(app))
-
+    t.after(() => app.close())
     app.register(mercurius, {
       schema,
       resolvers,
@@ -411,7 +401,7 @@ t.test('external policy', t => {
         body: JSON.stringify({ query })
       })
 
-      t.same(JSON.parse(response.body), {
+      t.assert.deepStrictEqual(JSON.parse(response.body), {
         data: {
           four: null,
           six: null,
@@ -508,7 +498,7 @@ t.test('external policy', t => {
         body: JSON.stringify({ query })
       })
 
-      t.same(JSON.parse(response.body), {
+      t.assert.deepStrictEqual(JSON.parse(response.body), {
         data: {
           four: null,
           six: null,
@@ -597,9 +587,7 @@ t.test('external policy', t => {
     }
   })
 
-  t.test('should work at type level with field resolvers', async (t) => {
-    t.plan(1)
-
+  test('should work at type level with field resolvers', async (t) => {
     const schema = `
       type Query {
         getUser: User
@@ -631,7 +619,7 @@ t.test('external policy', t => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -661,7 +649,7 @@ t.test('external policy', t => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         getUser: {
           id: 1,
@@ -671,9 +659,7 @@ t.test('external policy', t => {
     })
   })
 
-  t.test('should work at type level with nested directive', async (t) => {
-    t.plan(1)
-
+  test('should work at type level with nested directive', async (t) => {
     const schema = `
       type Query {
         getUser: User
@@ -707,7 +693,7 @@ t.test('external policy', t => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -738,7 +724,7 @@ t.test('external policy', t => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         getUser: {
           id: 1,
@@ -752,9 +738,7 @@ t.test('external policy', t => {
     })
   })
 
-  t.test('should error for all fields in type', async (t) => {
-    t.plan(1)
-
+  test('should error for all fields in type', async (t) => {
     const schema = `
       type Query {
         getUser: User
@@ -785,7 +769,7 @@ t.test('external policy', t => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -815,7 +799,7 @@ t.test('external policy', t => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         getUser: {
           id: null,
@@ -829,9 +813,7 @@ t.test('external policy', t => {
     })
   })
 
-  t.test('should work at type level for reference resolvers', async (t) => {
-    t.plan(2)
-
+  test('should work at type level for reference resolvers', async (t) => {
     const schema = `  
       type Query {
         getUser: User
@@ -881,7 +863,7 @@ t.test('external policy', t => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercuriusFederationPlugin, {
       schema,
@@ -912,7 +894,7 @@ t.test('external policy', t => {
       body: JSON.stringify({ variables, query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         _entities: [
           {
@@ -931,7 +913,7 @@ t.test('external policy', t => {
       body: JSON.stringify({ variables, query })
     })
 
-    t.same(JSON.parse(responseBad.body), {
+    t.assert.deepStrictEqual(JSON.parse(responseBad.body), {
       data: {
         _entities: [
           null
