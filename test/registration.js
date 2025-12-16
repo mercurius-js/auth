@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { describe, test } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { AssertionError } = require('assert')
@@ -25,15 +25,13 @@ const resolvers = {
 }
 
 test('registration - should error if mercurius is not loaded', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   try {
     await app.register(mercuriusAuth, {})
   } catch (error) {
-    t.same(
+    t.assert.deepStrictEqual(
       error,
       new AssertionError({
         message:
@@ -47,10 +45,8 @@ test('registration - should error if mercurius is not loaded', async (t) => {
 })
 
 test('registration - should error if authContext not a function', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
   app.register(mercurius, {
     schema,
     resolvers
@@ -59,15 +55,13 @@ test('registration - should error if authContext not a function', async (t) => {
   try {
     await app.register(mercuriusAuth, { applyPolicy: () => {}, authDirective: 'auth', authContext: '' })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authContext must be a function.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authContext must be a function.'))
   }
 })
 
 test('registration - should error if applyPolicy not specified', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
   app.register(mercurius, {
     schema,
     resolvers
@@ -78,15 +72,13 @@ test('registration - should error if applyPolicy not specified', async (t) => {
       authContext: () => {}
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.applyPolicy must be a function.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_INVALID_OPTS('opts.applyPolicy must be a function.'))
   }
 })
 
 test('registration - should error if authDirective not specified', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
   app.register(mercurius, {
     schema,
     resolvers
@@ -98,15 +90,13 @@ test('registration - should error if authDirective not specified', async (t) => 
       applyPolicy: () => {}
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authDirective must be a string.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_INVALID_OPTS('opts.authDirective must be a string.'))
   }
 })
 
 test('registration - should error if outputPolicyErrors.enabled is not a boolean', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
   app.register(mercurius, {
     schema,
     resolvers
@@ -123,15 +113,13 @@ test('registration - should error if outputPolicyErrors.enabled is not a boolean
       authDirective: 'filterData'
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.enabled must be a boolean'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.enabled must be a boolean'))
   }
 })
 
 test('registration - should error if outputPolicyErrors.valueOverride is not a string or function, integer check', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
   app.register(mercurius, {
     schema,
     resolvers
@@ -149,15 +137,13 @@ test('registration - should error if outputPolicyErrors.valueOverride is not a s
       authDirective: 'filterData'
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.valueOverride must be either a string or a function that returns a string.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.valueOverride must be either a string or a function that returns a string.'))
   }
 })
 
 test('registration - should error if outputPolicyErrors.valueOverride is not a string or function, object check', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
   app.register(mercurius, {
     schema,
     resolvers
@@ -175,15 +161,13 @@ test('registration - should error if outputPolicyErrors.valueOverride is not a s
       authDirective: 'filterData'
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.valueOverride must be either a string or a function that returns a string.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.valueOverride must be either a string or a function that returns a string.'))
   }
 })
 
 test('registration - should error if outputPolicyErrors.enabled is set', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
   app.register(mercurius, {
     schema,
     resolvers
@@ -201,15 +185,13 @@ test('registration - should error if outputPolicyErrors.enabled is set', async (
       authDirective: 'filterData'
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.enabled must be set to false if your a doing a replacement.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.enabled must be set to false if your a doing a replacement.'))
   }
 })
 
 test('registration - should error if outputPolicyErrors.valueOverride is not a string or function, array check', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
   app.register(mercurius, {
     schema,
     resolvers
@@ -227,15 +209,13 @@ test('registration - should error if outputPolicyErrors.valueOverride is not a s
       authDirective: 'filterData'
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.valueOverride must be either a string or a function that returns a string.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_INVALID_OPTS('opts.outputPolicyErrors.valueOverride must be either a string or a function that returns a string.'))
   }
 })
 
 test('registration - should register the plugin', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
@@ -246,57 +226,49 @@ test('registration - should register the plugin', async (t) => {
     applyPolicy: () => {},
     authDirective: 'auth'
   })
-  t.ok('mercurius auth plugin is registered')
+  t.assert.ok('mercurius auth plugin is registered')
 })
 
 test('should error if mode is not a string', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema,
     resolvers
   })
-  await t.rejects(app.register(mercuriusAuth, {
+  await t.assert.rejects(async () => app.register(mercuriusAuth, {
     authContext: () => {},
     applyPolicy: () => {},
     mode: {}
   }), new MER_AUTH_ERR_INVALID_OPTS('opts.mode must be a string.'))
 })
 
-test('registration - external policy', t => {
-  t.plan(4)
-
-  t.test('should error if policy is not an object', async (t) => {
-    t.plan(1)
-
+describe('registration - external policy', () => {
+  test('should error if policy is not an object', async (t) => {
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
       resolvers
     })
-    await t.rejects(app.register(mercuriusAuth, {
+    await t.assert.rejects(async () => app.register(mercuriusAuth, {
       applyPolicy: () => {},
       mode: 'external',
       policy: ''
     }), new MER_AUTH_ERR_INVALID_OPTS('opts.policy must be an object.'))
   })
 
-  t.test('should error if policy type is not an object', async (t) => {
-    t.plan(1)
-
+  test('should error if policy type is not an object', async (t) => {
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
       resolvers
     })
-    await t.rejects(app.register(mercuriusAuth, {
+    await t.assert.rejects(async () => app.register(mercuriusAuth, {
       applyPolicy: () => {},
       mode: 'external',
       policy: {
@@ -308,11 +280,9 @@ test('registration - external policy', t => {
     }), new MER_AUTH_ERR_INVALID_OPTS('opts.policy.wrong must be an object.'))
   })
 
-  t.test('registration - should register the plugin', async (t) => {
-    t.plan(1)
-
+  test('registration - should register the plugin', async (t) => {
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -327,20 +297,17 @@ test('registration - external policy', t => {
         }
       }
     })
-    t.ok('mercurius auth plugin is registered')
+    t.assert.ok('mercurius auth plugin is registered')
   })
 
-  t.test('cannot filter introspection schema on external mode', async (t) => {
-    t.plan(1)
-
+  test('cannot filter introspection schema on external mode', async (t) => {
     const app = Fastify()
-    t.teardown(app.close.bind(app))
-
+    t.after(() => app.close())
     app.register(mercurius, {
       schema,
       resolvers
     })
-    await t.rejects(app.register(mercuriusAuth, {
+    await t.assert.rejects(async () => app.register(mercuriusAuth, {
       applyPolicy: () => {},
       mode: 'external',
       filterSchema: true

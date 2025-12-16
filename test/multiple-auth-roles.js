@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { describe, test } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
@@ -98,14 +98,12 @@ const applyPolicy = (policy, context, info) => {
   throw new Error(AUTHORIZATION_ERROR.replace('{{fieldName}}', info.fieldName))
 }
 
-test('mutliple auth roles', (t) => {
-  t.test(
+describe('mutliple auth roles', () => {
+  test(
     'should protect the schema and not affect queries when everything is okay',
     async (t) => {
-      t.plan(1)
-
       const app = Fastify()
-      t.teardown(app.close.bind(app))
+      t.after(() => app.close())
 
       app.register(mercurius, {
         schema,
@@ -148,7 +146,7 @@ test('mutliple auth roles', (t) => {
         body: JSON.stringify({ query })
       })
 
-      t.same(JSON.parse(response.body), {
+      t.assert.deepStrictEqual(JSON.parse(response.body), {
         data: {
           four: 4,
           six: 6,
@@ -182,12 +180,9 @@ test('mutliple auth roles', (t) => {
     }
   )
 
-  t.test('should protect the schema and error accordingly', async (t) => {
-    t.plan(1)
-
+  test('should protect the schema and error accordingly', async (t) => {
     const app = Fastify()
-    t.teardown(app.close.bind(app))
-
+    t.after(() => app.close())
     app.register(mercurius, {
       schema,
       resolvers
@@ -229,7 +224,7 @@ test('mutliple auth roles', (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         four: null,
         six: null,
@@ -278,9 +273,7 @@ test('mutliple auth roles', (t) => {
     })
   })
 
-  t.test('should work alongside existing directives', async (t) => {
-    t.plan(1)
-
+  test('should work alongside existing directives', async (t) => {
     const schema = `
     directive @auth(requires: [Role]) on OBJECT | FIELD_DEFINITION
 
@@ -317,7 +310,7 @@ test('mutliple auth roles', (t) => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -344,7 +337,7 @@ test('mutliple auth roles', (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         four: null,
         six: null,
@@ -365,11 +358,9 @@ test('mutliple auth roles', (t) => {
     })
   })
 
-  t.test(
+  test(
     'should handle when no fields within a type are allowed',
     async (t) => {
-      t.plan(1)
-
       const schema = `
       directive @auth(requires: [Role]) on OBJECT | FIELD_DEFINITION
 
@@ -426,7 +417,7 @@ test('mutliple auth roles', (t) => {
       }`
 
       const app = Fastify()
-      t.teardown(app.close.bind(app))
+      t.after(() => app.close())
 
       app.register(mercurius, {
         schema,
@@ -453,7 +444,7 @@ test('mutliple auth roles', (t) => {
         body: JSON.stringify({ query })
       })
 
-      t.same(JSON.parse(response.body), {
+      t.assert.deepStrictEqual(JSON.parse(response.body), {
         data: {
           four: null,
           six: null,
@@ -483,31 +474,29 @@ test('mutliple auth roles', (t) => {
           {
             message: 'Insufficient permission for title',
             locations: [{ line: 6, column: 11 }],
-            path: ['messages', 0, 'title']
+            path: ['messages', '0', 'title']
           },
           {
             message: 'Insufficient permission for private',
             locations: [{ line: 7, column: 11 }],
-            path: ['messages', 0, 'private']
+            path: ['messages', '0', 'private']
           },
           {
             message: 'Insufficient permission for title',
             locations: [{ line: 6, column: 11 }],
-            path: ['messages', 1, 'title']
+            path: ['messages', '1', 'title']
           },
           {
             message: 'Insufficient permission for private',
             locations: [{ line: 7, column: 11 }],
-            path: ['messages', 1, 'private']
+            path: ['messages', '1', 'private']
           }
         ]
       })
     }
   )
 
-  t.test('should work at type level with field resolvers', async (t) => {
-    t.plan(1)
-
+  test('should work at type level with field resolvers', async (t) => {
     const schema = `
     directive @auth(requires: [Role]) on OBJECT | FIELD_DEFINITION
 
@@ -547,7 +536,7 @@ test('mutliple auth roles', (t) => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -574,7 +563,7 @@ test('mutliple auth roles', (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         getUser: {
           id: 1,
@@ -584,9 +573,7 @@ test('mutliple auth roles', (t) => {
     })
   })
 
-  t.test('should work at type level with nested directive', async (t) => {
-    t.plan(1)
-
+  test('should work at type level with nested directive', async (t) => {
     const schema = `
     directive @auth(requires: [Role]) on OBJECT | FIELD_DEFINITION
 
@@ -628,7 +615,7 @@ test('mutliple auth roles', (t) => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -655,7 +642,7 @@ test('mutliple auth roles', (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         getUser: {
           id: 1,
@@ -673,9 +660,7 @@ test('mutliple auth roles', (t) => {
     })
   })
 
-  t.test('should error for all fields in type', async (t) => {
-    t.plan(1)
-
+  test('should error for all fields in type', async (t) => {
     const schema = `
     directive @auth(requires: [Role]) on OBJECT | FIELD_DEFINITION
 
@@ -714,7 +699,7 @@ test('mutliple auth roles', (t) => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercurius, {
       schema,
@@ -741,7 +726,7 @@ test('mutliple auth roles', (t) => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         getUser: {
           id: null,
@@ -763,9 +748,7 @@ test('mutliple auth roles', (t) => {
     })
   })
 
-  t.test('should work at type level, entity query', async (t) => {
-    t.plan(2)
-
+  test('should work at type level, entity query', async (t) => {
     const schema = `
     directive @auth(requires: [Role]) on OBJECT | FIELD_DEFINITION
 
@@ -823,7 +806,7 @@ test('mutliple auth roles', (t) => {
     }`
 
     const app = Fastify()
-    t.teardown(app.close.bind(app))
+    t.after(() => app.close())
 
     app.register(mercuriusFederationPlugin, {
       schema,
@@ -850,7 +833,7 @@ test('mutliple auth roles', (t) => {
       body: JSON.stringify({ variables, query })
     })
 
-    t.same(JSON.parse(response.body), {
+    t.assert.deepStrictEqual(JSON.parse(response.body), {
       data: {
         _entities: [
           {
@@ -873,7 +856,7 @@ test('mutliple auth roles', (t) => {
       body: JSON.stringify({ variables, query })
     })
 
-    t.same(JSON.parse(responseBad.body), {
+    t.assert.deepStrictEqual(JSON.parse(responseBad.body), {
       data: {
         _entities: [null]
       },
@@ -891,6 +874,4 @@ test('mutliple auth roles', (t) => {
       ]
     })
   })
-
-  t.end()
 })

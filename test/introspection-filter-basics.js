@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { describe, test, after } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
@@ -75,9 +75,8 @@ const queryInputFields = `{
 `
 
 test('TypeSystemDirectiveLocation: OBJECT', async (t) => {
-  t.plan(3)
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -110,7 +109,7 @@ test('TypeSystemDirectiveLocation: OBJECT', async (t) => {
     body: JSON.stringify({ query: queryObjectMessage })
   })
 
-  t.same(response.json(), {
+  t.assert.deepStrictEqual(response.json(), {
     data: {
       __type: null
     }
@@ -119,10 +118,10 @@ test('TypeSystemDirectiveLocation: OBJECT', async (t) => {
   checkInternals(t, app, { directives: 1 })
 })
 
-test('TypeSystemDirectiveLocation: ARGUMENT_DEFINITION', { todo: 'not supported. Need FilterInputObjectFields' }, async (t) => {
+test('TypeSystemDirectiveLocation: ARGUMENT_DEFINITION', { skip: 'not supported. Need FilterInputObjectFields' }, async (t) => {
   t.plan(3)
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -142,7 +141,7 @@ test('TypeSystemDirectiveLocation: ARGUMENT_DEFINITION', { todo: 'not supported.
     filterSchema: true,
     authDirective: 'hideMe',
     applyPolicy: async () => {
-      t.pass('should be called on an introspection query')
+      t.assert.ok('should be called on an introspection query')
       return false
     }
   })
@@ -154,7 +153,7 @@ test('TypeSystemDirectiveLocation: ARGUMENT_DEFINITION', { todo: 'not supported.
     body: JSON.stringify({ query: queryArguments })
   })
 
-  t.same(response.json(), {
+  t.assert.deepStrictEqual(response.json(), {
     data: {
       __type: {
         name: 'Query',
@@ -174,7 +173,7 @@ test('TypeSystemDirectiveLocation: ARGUMENT_DEFINITION', { todo: 'not supported.
 test('TypeSystemDirectiveLocation: INTERFACE', async (t) => {
   t.plan(3)
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -199,7 +198,7 @@ test('TypeSystemDirectiveLocation: INTERFACE', async (t) => {
     filterSchema: true,
     authDirective: 'hideMe',
     applyPolicy: async () => {
-      t.pass('should be called on an introspection query')
+      t.assert.ok('should be called on an introspection query')
       return false
     }
   })
@@ -210,13 +209,13 @@ test('TypeSystemDirectiveLocation: INTERFACE', async (t) => {
     url: '/graphql',
     body: JSON.stringify({ query: queryListAll })
   })
-  t.notOk(response.json().data.__schema.types.find(({ name }) => name === 'BasicMessage'), 'should not have BasicMessage')
+  t.assert.ok(!response.json().data.__schema.types.find(({ name }) => name === 'BasicMessage'), 'should not have BasicMessage')
   checkInternals(t, app, { directives: 1 })
 })
 
-test('TypeSystemDirectiveLocation: UNION', async (t) => {
+describe('TypeSystemDirectiveLocation: UNION', async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -248,7 +247,7 @@ test('TypeSystemDirectiveLocation: UNION', async (t) => {
     authDirective: 'unionCheck'
   })
 
-  ;[
+  const tests = [
     {
       name: 'show UNION type',
       query: queryListByType,
@@ -311,9 +310,10 @@ test('TypeSystemDirectiveLocation: UNION', async (t) => {
         }
       }
     }
-  ].forEach(({ name, query, result, headers }) => {
-    t.test(name, async t => {
-      t.plan(1)
+  ]
+
+  for (const { name, query, result, headers } of tests) {
+    test(name, async t => {
       const response = await app.inject({
         method: 'POST',
         headers: { 'content-type': 'application/json', ...headers },
@@ -322,20 +322,18 @@ test('TypeSystemDirectiveLocation: UNION', async (t) => {
       })
 
       if (typeof result !== 'function') {
-        t.same(response.json(), result)
+        t.assert.deepStrictEqual(response.json(), result)
       } else {
-        t.test('response', t => {
-          result(t, response.json())
-        })
+        result(t, response.json())
       }
     })
-  })
+  }
 })
 
-test('TypeSystemDirectiveLocation: ENUM_VALUE', { todo: 'not supported. Need TransformEnumValues' }, async (t) => {
+test('TypeSystemDirectiveLocation: ENUM_VALUE', { skip: 'not supported. Need TransformEnumValues' }, async (t) => {
   t.plan(3)
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -358,7 +356,7 @@ test('TypeSystemDirectiveLocation: ENUM_VALUE', { todo: 'not supported. Need Tra
     filterSchema: true,
     authDirective: 'hideMe',
     applyPolicy: async () => {
-      t.pass('should be called on an introspection query')
+      t.assert.ok('should be called on an introspection query')
       return false
     }
   })
@@ -370,9 +368,7 @@ test('TypeSystemDirectiveLocation: ENUM_VALUE', { todo: 'not supported. Need Tra
     body: JSON.stringify({ query: queryEnumValues })
   })
 
-  require('fs').writeFileSync('./asd.json', JSON.stringify(response.json(), null, 2))
-
-  t.same(response.json(), {
+  t.assert.deepStrictEqual(response.json(), {
     data: {
       __type: {
         kind: 'ENUM',
@@ -392,7 +388,7 @@ test('TypeSystemDirectiveLocation: ENUM_VALUE', { todo: 'not supported. Need Tra
 test('TypeSystemDirectiveLocation: INPUT_OBJECT', async (t) => {
   t.plan(3)
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -413,7 +409,7 @@ test('TypeSystemDirectiveLocation: INPUT_OBJECT', async (t) => {
     filterSchema: true,
     authDirective: 'hideMe',
     applyPolicy: async () => {
-      t.pass('should be called on an introspection query')
+      t.assert.ok('should be called on an introspection query')
       return false
     }
   })
@@ -425,7 +421,7 @@ test('TypeSystemDirectiveLocation: INPUT_OBJECT', async (t) => {
     body: JSON.stringify({ query: queryInputFields })
   })
 
-  t.same(response.json(), {
+  t.assert.deepStrictEqual(response.json(), {
     data: {
       __type: {
         kind: 'OBJECT',
@@ -446,7 +442,7 @@ test('TypeSystemDirectiveLocation: INPUT_OBJECT', async (t) => {
 test('TypeSystemDirectiveLocation: INPUT_FIELD_DEFINITION', async (t) => {
   t.plan(3)
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -466,7 +462,7 @@ test('TypeSystemDirectiveLocation: INPUT_FIELD_DEFINITION', async (t) => {
     filterSchema: true,
     authDirective: 'hideMe',
     applyPolicy: async () => {
-      t.pass('should be called on an introspection query')
+      t.assert.ok('should be called on an introspection query')
       return false
     }
   })
@@ -478,7 +474,7 @@ test('TypeSystemDirectiveLocation: INPUT_FIELD_DEFINITION', async (t) => {
     body: JSON.stringify({ query: queryInputFields })
   })
 
-  t.same(response.json(), {
+  t.assert.deepStrictEqual(response.json(), {
     data: {
       __type: {
         kind: 'OBJECT',
@@ -499,7 +495,7 @@ test('TypeSystemDirectiveLocation: INPUT_FIELD_DEFINITION', async (t) => {
 test('mixed directives: one filtered out and one not', async (t) => {
   t.plan(3)
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -521,7 +517,7 @@ test('mixed directives: one filtered out and one not', async (t) => {
     filterSchema: true,
     authDirective: 'hideMe',
     applyPolicy: async () => {
-      t.pass('should be called on an introspection query')
+      t.assert.ok('should be called on an introspection query')
       return false
     }
   })
@@ -530,7 +526,7 @@ test('mixed directives: one filtered out and one not', async (t) => {
     filterSchema: false,
     authDirective: 'showMe',
     applyPolicy: async () => {
-      t.fail('should not be called on an introspection query')
+      t.assert.fail('should not be called on an introspection query')
       return true
     }
   })
@@ -542,7 +538,7 @@ test('mixed directives: one filtered out and one not', async (t) => {
     body: JSON.stringify({ query: queryObjectMessage })
   })
 
-  t.same(response.json(), {
+  t.assert.deepStrictEqual(response.json(), {
     data: {
       __type: {
         name: 'Message',
@@ -560,7 +556,7 @@ test('multiple filtered directives on different contexts', async (t) => {
   t.plan(6)
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -584,7 +580,7 @@ test('multiple filtered directives on different contexts', async (t) => {
     filterSchema: true,
     authDirective: 'root',
     applyPolicy: async () => {
-      t.pass('root called')
+      t.assert.ok('root called')
       return false
     }
   })
@@ -594,7 +590,7 @@ test('multiple filtered directives on different contexts', async (t) => {
       filterSchema: true,
       authDirective: 'child',
       applyPolicy: async () => {
-        t.pass('child called')
+        t.assert.ok('child called')
         return false
       }
     })
@@ -604,7 +600,7 @@ test('multiple filtered directives on different contexts', async (t) => {
         filterSchema: true,
         authDirective: 'subChild',
         applyPolicy: async () => {
-          t.pass('subChild called twice because it appears on two different fields')
+          t.assert.ok('subChild called twice because it appears on two different fields')
           return true
         }
       })
@@ -621,7 +617,7 @@ test('multiple filtered directives on different contexts', async (t) => {
     body: JSON.stringify({ query: queryObjectMessage })
   })
 
-  t.same(response.json(), {
+  t.assert.deepStrictEqual(response.json(), {
     data: {
       __type: {
         name: 'Message',
@@ -639,7 +635,7 @@ test('repeatable directive', async (t) => {
   t.plan(5)
 
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -659,7 +655,7 @@ test('repeatable directive', async (t) => {
     filterSchema: true,
     authDirective: 'counter',
     applyPolicy: async () => {
-      t.pass('should be called three times')
+      t.assert.ok('should be called three times')
       return true
     }
   })
@@ -671,7 +667,7 @@ test('repeatable directive', async (t) => {
     body: JSON.stringify({ query: queryObjectMessage })
   })
 
-  t.same(response.json(), {
+  t.assert.deepStrictEqual(response.json(), {
     data: {
       __type: {
         name: 'Message',
@@ -689,7 +685,7 @@ test('repeatable directive', async (t) => {
 test('introspection queries should work when filtered root types are empty', async (t) => {
   t.plan(3)
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -710,7 +706,7 @@ test('introspection queries should work when filtered root types are empty', asy
     filterSchema: true,
     authDirective: 'hideMe',
     applyPolicy: async () => {
-      t.pass('should be called on an introspection query')
+      t.assert.ok('should be called on an introspection query')
       return false
     }
   })
@@ -722,7 +718,7 @@ test('introspection queries should work when filtered root types are empty', asy
     body: JSON.stringify({ query: queryObjectMessage })
   })
 
-  t.same(response.json(), {
+  t.assert.deepStrictEqual(response.json(), {
     data: {
       __type: null
     }
@@ -734,5 +730,5 @@ test('introspection queries should work when filtered root types are empty', asy
 function checkInternals (t, app, { directives }) {
   const checkGrouping = Object.getOwnPropertySymbols(app)
   const groupSym = checkGrouping.find(sym => sym.toString().includes('mercurius-auth.filtering.group'))
-  t.equal(app[groupSym].length, directives)
+  t.assert.strictEqual(app[groupSym].length, directives)
 }

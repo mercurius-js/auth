@@ -1,6 +1,6 @@
 'use strict'
 
-const t = require('tap')
+const { describe, test } = require('node:test')
 const Fastify = require('fastify')
 const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
 const mercuriusGateway = require('@mercuriusjs/gateway')
@@ -118,7 +118,7 @@ async function createTestGatewayServer (t, authOpts) {
   const [postService, postServicePort] = await createTestService(t, postServiceSchema, postServiceResolvers)
 
   const gateway = Fastify()
-  t.teardown(async () => {
+  t.after(async () => {
     await gateway.close()
     await userService.close()
     await postService.close()
@@ -160,12 +160,8 @@ async function createTestGatewayServer (t, authOpts) {
   return gateway
 }
 
-t.test('gateway - external policy', t => {
-  t.plan(3)
-
-  t.test('should protect the schema as normal if everything is okay', async (t) => {
-    t.plan(1)
-
+describe('gateway - external policy', () => {
+  test('should protect the schema as normal if everything is okay', async (t) => {
     const app = await createTestGatewayServer(t)
 
     const query = `query {
@@ -192,7 +188,7 @@ t.test('gateway - external policy', t => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(res.body), {
+    t.assert.deepStrictEqual(JSON.parse(res.body), {
       data: {
         me: {
           id: 'u1',
@@ -225,8 +221,7 @@ t.test('gateway - external policy', t => {
     })
   })
 
-  t.test('should protect the schema if everything is not okay', async (t) => {
-    t.plan(1)
+  test('should protect the schema if everything is not okay', async (t) => {
     const app = await createTestGatewayServer(t)
 
     const query = `query {
@@ -253,7 +248,7 @@ t.test('gateway - external policy', t => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(res.body), {
+    t.assert.deepStrictEqual(JSON.parse(res.body), {
       data: {
         me: {
           id: 'u1',
@@ -276,14 +271,13 @@ t.test('gateway - external policy', t => {
         { message: 'Failed auth policy check on topPosts', locations: [{ line: 13, column: 7 }], path: ['topPosts'] },
         { message: 'Failed auth policy check on name', locations: [{ line: 4, column: 9 }], path: ['me', 'name'] },
         { message: 'Failed auth policy check on name', locations: [{ line: 5, column: 9 }], path: ['me', 'nickname'] },
-        { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 11 }], path: ['me', 'topPosts', 0, 'author'] },
-        { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 11 }], path: ['me', 'topPosts', 1, 'author'] }
+        { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 11 }], path: ['me', 'topPosts', '0', 'author'] },
+        { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 11 }], path: ['me', 'topPosts', '1', 'author'] }
       ]
     })
   })
 
-  t.test('should handle custom errors', async (t) => {
-    t.plan(1)
+  test('should handle custom errors', async (t) => {
     const app = await createTestGatewayServer(t, {
       authContext (context) {
         return {
@@ -334,7 +328,7 @@ t.test('gateway - external policy', t => {
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(res.body), {
+    t.assert.deepStrictEqual(JSON.parse(res.body), {
       data: {
         me: {
           id: 'u1',
@@ -357,8 +351,8 @@ t.test('gateway - external policy', t => {
         { message: 'custom auth error on topPosts', locations: [{ line: 13, column: 7 }], path: ['topPosts'] },
         { message: 'custom auth error on name', locations: [{ line: 4, column: 9 }], path: ['me', 'name'] },
         { message: 'custom auth error on name', locations: [{ line: 5, column: 9 }], path: ['me', 'nickname'] },
-        { message: 'custom auth error on author', locations: [{ line: 8, column: 11 }], path: ['me', 'topPosts', 0, 'author'] },
-        { message: 'custom auth error on author', locations: [{ line: 8, column: 11 }], path: ['me', 'topPosts', 1, 'author'] }
+        { message: 'custom auth error on author', locations: [{ line: 8, column: 11 }], path: ['me', 'topPosts', '0', 'author'] },
+        { message: 'custom auth error on author', locations: [{ line: 8, column: 11 }], path: ['me', 'topPosts', '1', 'author'] }
       ]
     })
   })

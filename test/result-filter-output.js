@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test, describe } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
@@ -25,7 +25,7 @@ const query = 'query { publicMessages { message, notes } }'
 
 test('remove valid notes results and replace it with empty string without any errors since user has a permission that does so', async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -73,14 +73,14 @@ test('remove valid notes results and replace it with empty string without any er
 
   t.plan(data.publicMessages.length + 1)
   for (let i = 0; i < data.publicMessages.length; i++) {
-    t.ok((data.publicMessages[i].notes === null), 'notes are null')
+    t.assert.ok((data.publicMessages[i].notes === null), 'notes are null')
   }
-  t.ok((typeof errors === 'undefined'), 'no error block')
+  t.assert.ok((typeof errors === 'undefined'), 'no error block')
 })
 
 test('on the resolver level, error out', async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -124,13 +124,13 @@ test('on the resolver level, error out', async (t) => {
       body: JSON.stringify({ query })
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_USAGE_ERROR('Replacement can not happen on a resolver. Only a field.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_USAGE_ERROR('Replacement can not happen on a resolver. Only a field.'))
   }
 })
 
 test("ensure that a user who doesn't have the role to filter, still sees the notes as they normally would", async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -178,14 +178,14 @@ test("ensure that a user who doesn't have the role to filter, still sees the not
 
   t.plan(data.publicMessages.length + 1)
   for (let i = 0; i < data.publicMessages.length; i++) {
-    t.ok((data.publicMessages[i].notes !== null), 'notes are valid')
+    t.assert.ok((data.publicMessages[i].notes !== null), 'notes are valid')
   }
-  t.ok((typeof errors === 'undefined'), 'no error block')
+  t.assert.ok((typeof errors === 'undefined'), 'no error block')
 })
 
 test('remove valid notes results and replace it with "foo" without any errors, using straight replace', async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -233,14 +233,14 @@ test('remove valid notes results and replace it with "foo" without any errors, u
 
   t.plan(data.publicMessages.length + 1)
   for (let i = 0; i < data.publicMessages.length; i++) {
-    t.ok((data.publicMessages[i].notes === 'foo'), 'notes do equal foo')
+    t.assert.ok((data.publicMessages[i].notes === 'foo'), 'notes do equal foo')
   }
-  t.ok((typeof errors === 'undefined'), 'no error block')
+  t.assert.ok((typeof errors === 'undefined'), 'no error block')
 })
 
 test('remove valid notes results and replace it with "foo" without any errors, using function method', async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -290,14 +290,14 @@ test('remove valid notes results and replace it with "foo" without any errors, u
 
   t.plan(data.publicMessages.length + 1)
   for (let i = 0; i < data.publicMessages.length; i++) {
-    t.ok((data.publicMessages[i].notes === 'foo'), 'notes do equal foo')
+    t.assert.ok((data.publicMessages[i].notes === 'foo'), 'notes do equal foo')
   }
-  t.ok((typeof errors === 'undefined'), 'no error block')
+  t.assert.ok((typeof errors === 'undefined'), 'no error block')
 })
 
 test('remove valid notes results and if the function returns anything other than a string, error out', async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -344,13 +344,13 @@ test('remove valid notes results and if the function returns anything other than
       body: JSON.stringify({ query })
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('Replacement must be a valid string.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('Replacement must be a valid string.'))
   }
 })
 
 test('error out during the policy check', async (t) => {
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   app.register(mercurius, {
     schema: `
@@ -395,12 +395,12 @@ test('error out during the policy check', async (t) => {
       body: JSON.stringify({ query })
     })
   } catch (error) {
-    t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('Replacement must be a valid string.'))
+    t.assert.deepStrictEqual(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('Replacement must be a valid string.'))
   }
 })
 
-test('can not filter and replace on a type that is not a String type', async (t) => {
-  ;[
+describe('can not filter and replace on a type that is not a String type', async () => {
+  const testSchemas = [
     {
       name: 'should fail on ID type',
       schema: `
@@ -454,10 +454,12 @@ test('can not filter and replace on a type that is not a String type', async (t)
     type Query {
       publicMessages: [Message!]
     }`
-    }].forEach(({ name, schema }) => {
-    t.test(name, async (t) => {
+    }]
+
+  for (const { name, schema } of testSchemas) {
+    test(name, async (t) => {
       const app = Fastify()
-      t.teardown(app.close.bind(app))
+      t.after(() => app.close())
 
       app.register(mercurius, {
         schema,
@@ -491,10 +493,10 @@ test('can not filter and replace on a type that is not a String type', async (t)
           body: JSON.stringify({ query })
         })
       } catch (error) {
-        t.same(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('You can not do a replacement on a GraphQL scalar type that is not a String'))
+        t.assert.deepStrictEqual(error, new MER_AUTH_ERR_FAILED_POLICY_CHECK('You can not do a replacement on a GraphQL scalar type that is not a String'))
       }
     })
-  })
+  }
 })
 
 function hasPermissionContext (context) {
