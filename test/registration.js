@@ -237,7 +237,7 @@ test('should error if mode is not a string', async (t) => {
     schema,
     resolvers
   })
-  await t.assert.rejects(async () => app.register(mercuriusAuth, {
+  await t.assert.rejects(async () => await app.register(mercuriusAuth, {
     authContext: () => {},
     applyPolicy: () => {},
     mode: {}
@@ -253,7 +253,7 @@ describe('registration - external policy', () => {
       schema,
       resolvers
     })
-    await t.assert.rejects(async () => app.register(mercuriusAuth, {
+    await t.assert.rejects(async () => await app.register(mercuriusAuth, {
       applyPolicy: () => {},
       mode: 'external',
       policy: ''
@@ -268,7 +268,7 @@ describe('registration - external policy', () => {
       schema,
       resolvers
     })
-    await t.assert.rejects(async () => app.register(mercuriusAuth, {
+    await t.assert.rejects(async () => await app.register(mercuriusAuth, {
       applyPolicy: () => {},
       mode: 'external',
       policy: {
@@ -307,7 +307,7 @@ describe('registration - external policy', () => {
       schema,
       resolvers
     })
-    await t.assert.rejects(async () => app.register(mercuriusAuth, {
+    await t.assert.rejects(async () => await app.register(mercuriusAuth, {
       applyPolicy: () => {},
       mode: 'external',
       filterSchema: true
