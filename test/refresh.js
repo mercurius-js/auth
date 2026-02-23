@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 const FakeTimers = require('@sinonjs/fake-timers')
 const { promisify } = require('util')
 const Fastify = require('fastify')
@@ -11,13 +11,11 @@ const mercuriusAuth = require('..')
 const immediate = promisify(setImmediate)
 
 test('polling interval with a new schema should trigger refresh of schema policy build', async (t) => {
-  t.plan(4)
-
   const clock = FakeTimers.install({
     shouldAdvanceTime: true,
     advanceTimeDelta: 40
   })
-  t.teardown(() => clock.uninstall())
+  t.after(() => clock.uninstall())
 
   const user = {
     id: 'u1',
@@ -36,7 +34,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
 
   const userService = Fastify()
   const gateway = Fastify()
-  t.teardown(async () => {
+  t.after(async () => {
     await gateway.close()
     await userService.close()
   })
@@ -80,7 +78,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
       }
     },
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      t.ok('should be called')
+      t.assert.ok('should be called')
       return context.auth.identity === 'admin'
     },
     authDirective: 'auth'
@@ -101,7 +99,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(res.body), {
+    t.assert.deepStrictEqual(JSON.parse(res.body), {
       data: {
         me: {
           id: 'u1',
@@ -166,7 +164,7 @@ test('polling interval with a new schema should trigger refresh of schema policy
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(res.body), {
+    t.assert.deepStrictEqual(JSON.parse(res.body), {
       data: {
         me: {
           id: 'u1',
@@ -193,14 +191,14 @@ test('polling interval with a new schema should trigger refresh of schema policy
   }
 })
 
-test('polling a filtered schema should complete the refresh succesfully', async (t) => {
+test('polling a filtered schema should complete the refresh successfully', async (t) => {
   t.plan(8)
 
   const clock = FakeTimers.install({
     shouldAdvanceTime: true,
     advanceTimeDelta: 40
   })
-  t.teardown(() => clock.uninstall())
+  t.after(() => clock.uninstall())
 
   const user = {
     id: 'u1',
@@ -219,7 +217,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
 
   const userService = Fastify()
   const gateway = Fastify()
-  t.teardown(async () => {
+  t.after(async () => {
     await gateway.close()
     await userService.close()
   })
@@ -264,7 +262,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
       }
     },
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      t.ok('should be called')
+      t.assert.ok('should be called')
       return context.auth.identity === 'admin'
     },
     authDirective: 'auth'
@@ -285,7 +283,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(res.body), {
+    t.assert.deepStrictEqual(JSON.parse(res.body), {
       data: {
         me: {
           id: 'u1',
@@ -327,7 +325,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
       body: JSON.stringify({ query })
     })
 
-    t.same(res.json(), {
+    t.assert.deepStrictEqual(res.json(), {
       data: {
         __type: {
           name: 'User',
@@ -379,7 +377,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
       body: JSON.stringify({ query })
     })
 
-    t.same(JSON.parse(res.body), {
+    t.assert.deepStrictEqual(JSON.parse(res.body), {
       data: {
         me: {
           id: 'u1',
@@ -422,7 +420,7 @@ test('polling a filtered schema should complete the refresh succesfully', async 
       body: JSON.stringify({ query })
     })
 
-    t.same(res.json(), {
+    t.assert.deepStrictEqual(res.json(), {
       data: {
         __type: {
           name: 'User',

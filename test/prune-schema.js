@@ -1,11 +1,11 @@
 'use strict'
 
-const { test } = require('tap')
+const { describe, test } = require('node:test')
 const { buildSchema, printSchema, parse } = require('graphql')
 const { pruneSchema } = require('../lib/prune-schema')
 
-test('pruneSchema', async (t) => {
-  ;[
+describe('pruneSchema', async (t) => {
+  const tests = [
     {
       name: 'should prune object types from the schema',
       schema: `
@@ -366,18 +366,14 @@ type Query {
   messages(org: String): [MessageUnion!]
 }`
     }
-  ].forEach(({ name, schema, filterDirectiveMap, result }) => {
-    t.test(name, (t) => {
-      // Arrange
-      t.plan(2)
+  ]
 
-      // Act
+  for (const { name, schema, filterDirectiveMap, result } of tests) {
+    test(name, (t) => {
       const prunedSchema = pruneSchema(buildSchema(schema), filterDirectiveMap)
-
-      // Assert
       const schemaString = printSchema(prunedSchema)
-      t.equal(schemaString, result)
-      t.doesNotThrow(() => parse(schemaString))
+      t.assert.strictEqual(schemaString, result)
+      t.assert.doesNotThrow(() => parse(schemaString))
     })
-  })
+  }
 })

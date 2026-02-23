@@ -1,15 +1,13 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
 const mercuriusAuth = require('..')
 
 test('repeteable directives - should protect the schema and not affect queries when everything is okay', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
     directive @hasPermission (grant: String!) repeatable on OBJECT | FIELD_DEFINITION
@@ -90,7 +88,7 @@ test('repeteable directives - should protect the schema and not affect queries w
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       messages: [
         {
@@ -117,10 +115,8 @@ test('repeteable directives - should protect the schema and not affect queries w
 })
 
 test('repeteable directives - should protect the schema and error accordingly', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
     directive @hasPermission (grant: String!) repeatable on OBJECT | FIELD_DEFINITION
@@ -201,7 +197,7 @@ test('repeteable directives - should protect the schema and error accordingly', 
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(response.body), {
+  t.assert.deepStrictEqual(JSON.parse(response.body), {
     data: {
       messages: [
         {
@@ -224,10 +220,8 @@ test('repeteable directives - should protect the schema and error accordingly', 
 })
 
 test('repeteable directives - should throw a validation error when the repeated directive is not flagged as "repeatable"', async (t) => {
-  t.plan(1)
-
   const app = Fastify()
-  t.teardown(app.close.bind(app))
+  t.after(() => app.close())
 
   const schema = `
     directive @hasPermission (grant: String!) on OBJECT | FIELD_DEFINITION
@@ -308,6 +302,6 @@ test('repeteable directives - should throw a validation error when the repeated 
       body: JSON.stringify({ query })
     })
   } catch (validationError) {
-    t.ok(validationError)
+    t.assert.ok(validationError)
   }
 })

@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 const Fastify = require('fastify')
 const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
 const mercuriusGateway = require('@mercuriusjs/gateway')
@@ -126,7 +126,7 @@ async function createTestGatewayServer (t, authOpts) {
   const [postService, postServicePort] = await createTestService(t, postServiceSchema, postServiceResolvers)
 
   const gateway = Fastify()
-  t.teardown(async () => {
+  t.after(async () => {
     await gateway.close()
     await userService.close()
     await postService.close()
@@ -160,7 +160,6 @@ async function createTestGatewayServer (t, authOpts) {
 }
 
 test('repeteable directives with gateway - should protect the schema as normal if everything is okay', async (t) => {
-  t.plan(1)
   const app = await createTestGatewayServer(t)
 
   const query = `query {
@@ -187,7 +186,7 @@ test('repeteable directives with gateway - should protect the schema as normal i
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(res.body), {
+  t.assert.deepStrictEqual(JSON.parse(res.body), {
     data: {
       me: {
         id: 'u1',
@@ -221,7 +220,6 @@ test('repeteable directives with gateway - should protect the schema as normal i
 })
 
 test('repeteable directives with gateway - should protect the schema if everything is not okay', async (t) => {
-  t.plan(1)
   const app = await createTestGatewayServer(t)
 
   const query = `query {
@@ -248,7 +246,7 @@ test('repeteable directives with gateway - should protect the schema if everythi
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(res.body), {
+  t.assert.deepStrictEqual(JSON.parse(res.body), {
     data: {
       me: {
         id: 'u1',
@@ -271,8 +269,8 @@ test('repeteable directives with gateway - should protect the schema if everythi
       { message: 'Failed auth policy check on topPosts', locations: [{ line: 13, column: 3 }], path: ['topPosts'] },
       { message: 'Failed auth policy check on name', locations: [{ line: 4, column: 5 }], path: ['me', 'name'] },
       { message: 'Failed auth policy check on name', locations: [{ line: 5, column: 5 }], path: ['me', 'nickname'] },
-      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 0, 'author'] },
-      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 1, 'author'] }
+      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', '0', 'author'] },
+      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', '1', 'author'] }
     ]
   })
 })

@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 const Fastify = require('fastify')
 const { mercuriusFederationPlugin } = require('@mercuriusjs/federation')
 const mercuriusGateway = require('@mercuriusjs/gateway')
@@ -144,7 +144,7 @@ async function createTestGatewayServer (t, authOpts) {
   const [postService, postServicePort] = await createTestService(t, postServiceSchema, postServiceResolvers)
 
   const gateway = Fastify()
-  t.teardown(async () => {
+  t.after(async () => {
     await gateway.close()
     await userService.close()
     await postService.close()
@@ -176,7 +176,6 @@ async function createTestGatewayServer (t, authOpts) {
 }
 
 test('gateway - should protect the schema as normal if everything is okay', async (t) => {
-  t.plan(1)
   const app = await createTestGatewayServer(t)
 
   const query = `query {
@@ -203,7 +202,7 @@ test('gateway - should protect the schema as normal if everything is okay', asyn
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(res.body), {
+  t.assert.deepStrictEqual(JSON.parse(res.body), {
     data: {
       me: {
         id: 'u1',
@@ -237,7 +236,6 @@ test('gateway - should protect the schema as normal if everything is okay', asyn
 })
 
 test('gateway - should protect the schema if everything is not okay', async (t) => {
-  t.plan(1)
   const app = await createTestGatewayServer(t)
 
   const query = `query {
@@ -264,7 +262,7 @@ test('gateway - should protect the schema if everything is not okay', async (t) 
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(res.body), {
+  t.assert.deepStrictEqual(JSON.parse(res.body), {
     data: {
       me: {
         id: 'u1',
@@ -287,14 +285,13 @@ test('gateway - should protect the schema if everything is not okay', async (t) 
       { message: 'Failed auth policy check on topPosts', locations: [{ line: 13, column: 3 }], path: ['topPosts'] },
       { message: 'Failed auth policy check on name', locations: [{ line: 4, column: 5 }], path: ['me', 'name'] },
       { message: 'Failed auth policy check on name', locations: [{ line: 5, column: 5 }], path: ['me', 'nickname'] },
-      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 0, 'author'] },
-      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 1, 'author'] }
+      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', '0', 'author'] },
+      { message: 'Failed auth policy check on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', '1', 'author'] }
     ]
   })
 })
 
 test('gateway - should handle custom errors', async (t) => {
-  t.plan(1)
   const app = await createTestGatewayServer(t, {
     authContext (context) {
       return {
@@ -334,7 +331,7 @@ test('gateway - should handle custom errors', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(res.body), {
+  t.assert.deepStrictEqual(JSON.parse(res.body), {
     data: {
       me: {
         id: 'u1',
@@ -357,14 +354,13 @@ test('gateway - should handle custom errors', async (t) => {
       { message: 'custom auth error on topPosts', locations: [{ line: 13, column: 3 }], path: ['topPosts'] },
       { message: 'custom auth error on name', locations: [{ line: 4, column: 5 }], path: ['me', 'name'] },
       { message: 'custom auth error on name', locations: [{ line: 5, column: 5 }], path: ['me', 'nickname'] },
-      { message: 'custom auth error on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 0, 'author'] },
-      { message: 'custom auth error on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', 1, 'author'] }
+      { message: 'custom auth error on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', '0', 'author'] },
+      { message: 'custom auth error on author', locations: [{ line: 8, column: 7 }], path: ['me', 'topPosts', '1', 'author'] }
     ]
   })
 })
 
 test('gateway - should handle when auth context is not defined', async (t) => {
-  t.plan(1)
   const app = await createTestGatewayServer(t, {
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
       if (context.other.identity !== 'admin') {
@@ -407,7 +403,7 @@ test('gateway - should handle when auth context is not defined', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(JSON.parse(res.body), {
+  t.assert.deepStrictEqual(JSON.parse(res.body), {
     data: {
       me: {
         id: 'u1',
@@ -452,7 +448,7 @@ test('gateway - should filter the schema output', async (t) => {
   const app = await createTestGatewayServer(t, {
     filterSchema: true,
     async applyPolicy (authDirectiveAST, parent, args, context, info) {
-      t.equal(info.fieldName, order.shift())
+      t.assert.deepStrictEqual(info.fieldName, order.shift())
       return false
     },
     authDirective: 'auth'
@@ -474,7 +470,7 @@ test('gateway - should filter the schema output', async (t) => {
     body: JSON.stringify({ query })
   })
 
-  t.same(res.json(), {
+  t.assert.deepStrictEqual(res.json(), {
     data: {
       __type: {
         name: 'Query',
