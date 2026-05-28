@@ -1,13 +1,13 @@
-import { expectAssignable, expectType } from 'tsd'
 import fastify from 'fastify'
 import { DirectiveNode, GraphQLResolveInfo } from 'graphql'
 import { MercuriusContext } from 'mercurius'
+import { expect } from 'tstyche'
 import mercuriusAuth, {
   ApplyPolicyHandler,
   AuthContextHandler,
-  MercuriusAuthOptions,
-  MercuriusAuthContext
-} from '../..'
+  MercuriusAuthContext,
+  MercuriusAuthOptions
+} from '..'
 
 const app = fastify()
 
@@ -15,17 +15,16 @@ const app = fastify()
 app.register(mercuriusAuth, {
   authDirective: 'auth',
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
-    expectAssignable<DirectiveNode>(authDirectiveAST)
-    expectType<any>(parent)
-    expectType<any>(args)
-    expectType<MercuriusContext>(context)
-    expectType<GraphQLResolveInfo>(info)
-    // `context.auth` may be undefined if `authContext` is not provided
-    expectType<MercuriusAuthContext|undefined>(context.auth)
+    expect(authDirectiveAST).type.toBe<any>()
+    expect(parent).type.toBe<any>()
+    expect(args).type.toBe<any>()
+    expect(context).type.toBe<MercuriusContext>()
+    expect(info).type.toBe<GraphQLResolveInfo>()
+    expect(context.auth).type.toBe<MercuriusAuthContext | undefined>()
     return true
   },
   authContext (context) {
-    expectType<MercuriusContext>(context)
+    expect(context).type.toBe<MercuriusContext>()
     return {}
   }
 })
@@ -34,32 +33,35 @@ app.register(mercuriusAuth, {
 interface CustomParent {
   parent: Record<string, any>;
 }
+
 interface CustomArgs {
   arg: Record<string, any>;
 }
+
 interface CustomContext extends MercuriusContext {
   auth?: { identity?: string };
 }
+
 const authOptions: MercuriusAuthOptions = {
   filterSchema: true,
   authDirective: 'auth',
   async applyPolicy (
-    authDirectiveAST,
+    authDirectiveAST: DirectiveNode,
     parent: CustomParent,
     args: CustomArgs,
     context: CustomContext,
     info
   ) {
-    expectAssignable<DirectiveNode>(authDirectiveAST)
-    expectType<CustomParent>(parent)
-    expectType<CustomArgs>(args)
-    expectType<CustomContext>(context)
-    expectType<GraphQLResolveInfo>(info)
-    expectType<string | undefined>(context?.auth?.identity)
+    expect(authDirectiveAST).type.toBe<DirectiveNode>()
+    expect(parent).type.toBe<CustomParent>()
+    expect(args).type.toBe<CustomArgs>()
+    expect(context).type.toBe<CustomContext>()
+    expect(info).type.toBe<GraphQLResolveInfo>()
+    expect(context?.auth?.identity).type.toBe<string | undefined>()
     return true
   },
   authContext (context: CustomContext) {
-    expectType<CustomContext>(context)
+    expect(context).type.toBe<CustomContext>()
     return { identity: context.reply.request.headers['x-auth'] }
   }
 }
@@ -70,16 +72,16 @@ app.register(mercuriusAuth, authOptions)
 const authOptionsWithGenerics: MercuriusAuthOptions<CustomParent, CustomArgs, CustomContext> = {
   authDirective: 'auth',
   async applyPolicy (authDirectiveAST, parent, args, context, info) {
-    expectAssignable<DirectiveNode>(authDirectiveAST)
-    expectType<CustomParent>(parent)
-    expectType<CustomArgs>(args)
-    expectType<CustomContext>(context)
-    expectType<GraphQLResolveInfo>(info)
-    expectType<string | undefined>(context?.auth?.identity)
+    expect(authDirectiveAST).type.toBe<any>()
+    expect(parent).type.toBe<CustomParent>()
+    expect(args).type.toBe<CustomArgs>()
+    expect(context).type.toBe<CustomContext>()
+    expect(info).type.toBe<GraphQLResolveInfo>()
+    expect(context?.auth?.identity).type.toBe<string | undefined>()
     return true
   },
   authContext (context) {
-    expectType<CustomContext>(context)
+    expect(context).type.toBe<CustomContext>()
     return { identity: context.reply.request.headers['x-auth'] }
   }
 }
@@ -88,18 +90,18 @@ app.register(mercuriusAuth, authOptionsWithGenerics)
 
 // 4. creating functions using types handlers
 const authContext: AuthContextHandler<CustomContext> = (context) => {
-  expectType<CustomContext>(context)
+  expect(context).type.toBe<CustomContext>()
   return { identity: context.reply.request.headers['x-auth'] }
 }
 
 const applyPolicy: ApplyPolicyHandler<{}, {}, CustomContext> =
   async (authDirectiveAST, parent, args, context, info) => {
-    expectAssignable<DirectiveNode>(authDirectiveAST)
-    expectType<{}>(parent)
-    expectType<{}>(args)
-    expectType<CustomContext>(context)
-    expectType<GraphQLResolveInfo>(info)
-    expectType<string|undefined>(context?.auth?.identity)
+    expect(authDirectiveAST).type.toBe<any>()
+    expect(parent).type.toBe<{}>()
+    expect(args).type.toBe<{}>()
+    expect(context).type.toBe<CustomContext>()
+    expect(info).type.toBe<GraphQLResolveInfo>()
+    expect(context?.auth?.identity).type.toBe<string | undefined>()
     return true
   }
 
@@ -119,12 +121,12 @@ app.register(mercuriusAuth, {
 // External policy for fields only
 app.register(mercuriusAuth, {
   async applyPolicy (policy: string, parent, args, context, info) {
-    expectType<string>(policy)
-    expectType<any>(parent)
-    expectType<any>(args)
-    expectType<MercuriusContext>(context)
-    expectType<GraphQLResolveInfo>(info)
-    expectType<MercuriusAuthContext | undefined>(context.auth)
+    expect(policy).type.toBe<string>()
+    expect(parent).type.toBe<any>()
+    expect(args).type.toBe<any>()
+    expect(context).type.toBe<MercuriusContext>()
+    expect(info).type.toBe<GraphQLResolveInfo>()
+    expect(context.auth).type.toBe<MercuriusAuthContext | undefined>()
     return true
   },
   authContext,
@@ -142,12 +144,12 @@ app.register(mercuriusAuth, {
 // External policy for field and types
 app.register(mercuriusAuth, {
   async applyPolicy (policy: string, parent, args, context, info) {
-    expectType<string>(policy)
-    expectType<any>(parent)
-    expectType<any>(args)
-    expectType<MercuriusContext>(context)
-    expectType<GraphQLResolveInfo>(info)
-    expectType<MercuriusAuthContext | undefined>(context.auth)
+    expect(policy).type.toBe<string>()
+    expect(parent).type.toBe<any>()
+    expect(args).type.toBe<any>()
+    expect(context).type.toBe<MercuriusContext>()
+    expect(info).type.toBe<GraphQLResolveInfo>()
+    expect(context.auth).type.toBe<MercuriusAuthContext | undefined>()
     return true
   },
   authContext,
@@ -167,18 +169,19 @@ app.register(mercuriusAuth, {
 interface CustomPolicy {
   requires: string[]
 }
+
 const externalPolicyOptions: MercuriusAuthOptions<CustomParent, CustomArgs, CustomContext, CustomPolicy> = {
   async applyPolicy (policy, parent, args, context, info) {
-    expectType<CustomPolicy>(policy)
-    expectType<CustomParent>(parent)
-    expectType<CustomArgs>(args)
-    expectType<CustomContext>(context)
-    expectType<GraphQLResolveInfo>(info)
-    expectType<string | undefined>(context?.auth?.identity)
+    expect(policy).type.toBe<CustomPolicy>()
+    expect(parent).type.toBe<CustomParent>()
+    expect(args).type.toBe<CustomArgs>()
+    expect(context).type.toBe<CustomContext>()
+    expect(info).type.toBe<GraphQLResolveInfo>()
+    expect(context?.auth?.identity).type.toBe<string | undefined>()
     return true
   },
   authContext (context) {
-    expectType<CustomContext>(context)
+    expect(context).type.toBe<CustomContext>()
     return { identity: context.reply.request.headers['x-auth'] }
   },
   mode: 'external',
@@ -192,4 +195,5 @@ const externalPolicyOptions: MercuriusAuthOptions<CustomParent, CustomArgs, Cust
     }
   }
 }
+
 app.register(mercuriusAuth, externalPolicyOptions)

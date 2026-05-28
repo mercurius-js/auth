@@ -3,14 +3,14 @@
   "version": "6.0.0",
   "description": "Mercurius Auth Plugin adds configurable Authentication and Authorization support to Mercurius.",
   "main": "index.js",
-  "types": "index.d.ts",
+  "types": "types/index.d.ts",
   "scripts": {
     "unit": "borp --no-typescript --timeout 300000 --reporter spec 'test/**/*.js'",
     "cov": "borp --coverage --no-typescript --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 --timeout 300000 --reporter spec 'test/**/*.js'",
     "lint": "npm run lint:standard && npm run lint:typescript",
     "lint:standard": "standard | snazzy",
-    "lint:typescript": "standard --parser @typescript-eslint/parser --plugin @typescript-eslint/eslint-plugin index.d.ts test/types/*.ts | snazzy",
-    "typescript": "tsd",
+    "lint:typescript": "standard --parser @typescript-eslint/parser --plugin @typescript-eslint/eslint-plugin types/**/*.ts | snazzy",
+    "typescript": "tstyche",
     "test": "npm run lint && npm run unit && npm run typescript"
   },
   "repository": {
@@ -45,17 +45,14 @@
     "mercurius": "^15.0.0",
     "snazzy": "^9.0.0",
     "standard": "^17.0.0",
-    "tsd": "^0.28.0",
-    "typescript": "^5.0.2",
+    "tstyche": "^7.1.0",
+    "typescript": "^6.0.3",
     "wait-on": "^7.0.1"
   },
   "dependencies": {
     "@fastify/error": "^4.0.0",
     "fastify-plugin": "^5.0.0",
     "graphql": "^16.2.0"
-  },
-  "tsd": {
-    "directory": "./test/types"
   },
   "pre-commit": [
     "lint"
