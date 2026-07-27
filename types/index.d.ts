@@ -150,6 +150,9 @@ declare namespace mercuriusAuth {
     /**
      * The error returned when the composition denies. When omitted, the composed
      * policy returns `false` and the plugin raises `MER_AUTH_ERR_FAILED_POLICY_CHECK`.
+     * It must return an `Error`: anything else denies the field with
+     * `MER_AUTH_ERR_INVALID_POLICY`, because a truthy non-`Error` would be read as a
+     * grant.
      */
     onDeny?: (context: TContext, info: GraphQLResolveInfo) => Error;
     /**

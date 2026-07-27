@@ -129,6 +129,14 @@ Add it to the schema as above, or with [`extendSchema`](https://mercurius.dev/#/
 await app.graphql.extendSchema(sdl)
 ```
 
+A field with a single check can pass it directly — GraphQL coerces a single value where a list is expected, so `@auth(checks: { scope: "admin" })` is a list of one:
+
+```graphql
+type Query {
+  add(x: Int, y: Int): Int @auth(checks: { scope: "admin" })
+}
+```
+
 Because the directive is `repeatable`, repeating it on a field ANDs the composed policies — each occurrence is enforced independently:
 
 ```graphql
@@ -298,7 +306,7 @@ Returns `{ applyPolicy, sdl, authDirective }`.
 - **evaluate** `(check: any, prepared: any) => boolean | Promise<boolean>` - judge one check against the `prepare`d value. Called once per check of the matching policy.
 - **parseCheck** `(node: ValueNode) => any` - parse one element of the directive's `checks` list. Throw to reject a malformed check.
 - **prepare** `(context: MercuriusContext) => any` (optional) - derive the value the checks are judged against, once per protected field, before any check runs. When omitted, the context itself is passed to `evaluate`.
-- **onDeny** `(context: MercuriusContext, info: GraphQLResolveInfo) => Error` (optional) - the error returned when the composition denies. Defaults to returning `false`, which the plugin reports as `MER_AUTH_ERR_FAILED_POLICY_CHECK`.
+- **onDeny** `(context: MercuriusContext, info: GraphQLResolveInfo) => Error` (optional) - the error returned when the composition denies. Defaults to returning `false`, which the plugin reports as `MER_AUTH_ERR_FAILED_POLICY_CHECK`. It must return an `Error`: the field is denied with `MER_AUTH_ERR_INVALID_POLICY` if it returns anything else, since a truthy non-`Error` would otherwise be read as a grant.
 - **defaultRelation** `'and' | 'or'` (optional, default: `'or'`) - the relation applied to a field that does not specify one.
 - **run** `'all' | 'first'` (optional, default: `'all'`) - `'all'` evaluates every check of a policy concurrently, `'first'` evaluates them in order and stops at the first check that decides the outcome.
 - **enabled** `boolean` (optional, default: `true`) - when `false`, every composed policy passes without evaluating its checks.

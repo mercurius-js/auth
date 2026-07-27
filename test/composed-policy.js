@@ -61,6 +61,7 @@ const buildDirectiveApp = async (t, opts) => {
       unqualified: Boolean @auth(checks: [{ scope: "a" }, { scope: "b" }])
       repeated: Boolean @auth(checks: [{ scope: "a" }]) @auth(checks: [{ scope: "b" }])
       noChecks: Boolean @auth(checks: [])
+      singleCheck: Boolean @auth(checks: { scope: "a" })
       malformed: Boolean @auth(checks: [{ scope: "" }])
       unprotected: Boolean
     }
@@ -72,6 +73,7 @@ const buildDirectiveApp = async (t, opts) => {
         unqualified: async () => true,
         repeated: async () => true,
         noChecks: async () => true,
+        singleCheck: async () => true,
         malformed: async () => true,
         unprotected: async () => true
       }
@@ -593,4 +595,88 @@ test('composed external policy - run: first stops at the check that decides', as
 
   t.assert.deepStrictEqual((await query(app, 'everyScope', 'b')).errors[0].message, 'Failed auth policy check on everyScope')
   t.assert.deepStrictEqual(evaluated, ['a'])
+})
+
+test('composed directive policy - a single check is a list of one', async (t) => {
+  t.plan(2)
+
+  // GraphQL coerces a single value where a list is expected, so
+  // `checks: { scope: "a" }` is valid SDL for a one check list.
+  const app = await buildDirectiveApp(t)
+
+  t.assert.deepStrictEqual(await query(app, 'singleCheck', 'a'), { data: { singleCheck: true } })
+  t.assert.deepStrictEqual((await query(app, 'singleCheck', 'b')).errors[0].message, 'Failed auth policy check on singleCheck')
+})
+
+test('composed directive policy - a null checks argument denies', async (t) => {
+  t.plan(1)
+
+  // A hand written directive can declare `checks` as nullable.
+  const { applyPolicy } = composeDirectivePolicy(scopeCheckOptions)
+  const authDirectiveAST = {
+    kind: 'Directive',
+    name: { kind: 'Name', value: 'auth' },
+    arguments: [
+      { kind: 'Argument', name: { kind: 'Name', value: 'checks' }, value: { kind: 'NullValue' } }
+    ]
+  }
+
+  t.assert.strictEqual(await applyPolicy(authDirectiveAST, {}, {}, {}, { fieldName: 'add' }), false)
+})
+
+test('composed directive policy - parseCheck is called with the check node alone', async (t) => {
+  t.plan(2)
+
+  const app = await buildDirectiveApp(t, {
+    parseCheck: (...args) => {
+      t.assert.strictEqual(args.length, 1)
+      return parseScopeCheck(args[0])
+    }
+  })
+
+  t.assert.deepStrictEqual(await query(app, 'singleCheck', 'a'), { data: { singleCheck: true } })
+})
+
+test('composed external policy - validate is called with the check alone', async (t) => {
+  t.plan(2)
+
+  const app = await buildExternalApp(t, {
+    Query: {
+      anyScope: { checks: [{ scope: 'a' }] }
+    }
+  }, {
+    validate: (...args) => {
+      t.assert.strictEqual(args.length, 1)
+    }
+  })
+
+  t.assert.deepStrictEqual(await query(app, 'anyScope', 'a'), { data: { anyScope: true } })
+})
+
+test('composed directive policy - an onDeny that does not return an Error still denies', async (t) => {
+  t.plan(2)
+
+  // A denial must never become a grant by way of the hook meant to shape it: the
+  // resolver wrapper reads a truthy non-Error as "granted".
+  const app = await buildDirectiveApp(t, { onDeny: () => ({ message: 'nope' }) })
+
+  const response = await query(app, 'anyScope', 'c')
+
+  t.assert.deepStrictEqual(response.data, { anyScope: null })
+  t.assert.deepStrictEqual(response.errors[0].message, 'Invalid auth policy on anyScope: onDeny must return an Error')
+})
+
+test('composed external policy - an onDeny that does not return an Error still denies', async (t) => {
+  t.plan(2)
+
+  const app = await buildExternalApp(t, {
+    Query: {
+      anyScope: { checks: [{ scope: 'a' }] }
+    }
+  }, { onDeny: () => 'nope' })
+
+  const response = await query(app, 'anyScope', 'c')
+
+  t.assert.deepStrictEqual(response.data, { anyScope: null })
+  t.assert.deepStrictEqual(response.errors[0].message, 'Invalid auth policy on anyScope: onDeny must return an Error')
 })
