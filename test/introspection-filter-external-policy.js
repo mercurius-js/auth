@@ -3,6 +3,7 @@
 const { test } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
+const { GraphQLSchema, GraphQLObjectType, GraphQLBoolean } = require('graphql')
 const mercuriusAuth = require('..')
 
 const queryQueryFields = `{
@@ -166,5 +167,46 @@ test('external policy - ignores a policy naming a type or field the schema does 
   })
   t.assert.deepStrictEqual(await inject(app, queryQueryFields, 'admin'), {
     data: { __type: { fields: [{ name: 'open' }] } }
+  })
+})
+
+test('external policy - filters a schema that was built programmatically', async (t) => {
+  t.plan(2)
+
+  // Such a schema has no AST, which the policy info is otherwise read from.
+  const buildSchema = () => new GraphQLSchema({
+    query: new GraphQLObjectType({
+      name: 'Query',
+      fields: {
+        open: { type: GraphQLBoolean },
+        guarded: { type: GraphQLBoolean }
+      }
+    })
+  })
+
+  const buildProgrammaticApp = async permission => {
+    const app = Fastify()
+    t.after(() => app.close())
+
+    app.register(mercurius, {
+      schema: buildSchema(),
+      resolvers: { Query: { open: async () => true, guarded: async () => true } }
+    })
+    app.register(mercuriusAuth, {
+      mode: 'external',
+      filterSchema: true,
+      applyPolicy: async policy => policy.requires === permission,
+      policy: { Query: { guarded: { requires: 'admin' } } }
+    })
+
+    await app.ready()
+    return app
+  }
+
+  t.assert.deepStrictEqual(await inject(await buildProgrammaticApp('guest'), queryQueryFields, 'guest'), {
+    data: { __type: { fields: [{ name: 'open' }] } }
+  })
+  t.assert.deepStrictEqual(await inject(await buildProgrammaticApp('admin'), queryQueryFields, 'admin'), {
+    data: { __type: { fields: [{ name: 'open' }, { name: 'guarded' }] } }
   })
 })
