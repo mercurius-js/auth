@@ -217,6 +217,7 @@ interface ScopeCheck {
 // 1. The core combinator
 expect(compose<string[]>([scopes => scopes.includes('admin')])).type.toBe<(prepared: string[]) => Promise<boolean>>()
 expect(compose<string[]>([async scopes => scopes.includes('admin')], 'and')).type.toBe<(prepared: string[]) => Promise<boolean>>()
+expect(compose<string[]>([scopes => scopes.includes('admin')], 'or', 'first')).type.toBe<(prepared: string[]) => Promise<boolean>>()
 expect(compose([context => typeof context.auth !== 'undefined'])).type.toBe<(prepared: MercuriusContext) => Promise<boolean>>()
 
 // 2. Directive mode
@@ -224,6 +225,7 @@ const directivePolicy = composeDirectivePolicy<ScopeCheck, string[]>({
   checkInput: 'scope: String!',
   authDirective: 'auth',
   defaultRelation: 'or',
+  run: 'first',
   enabled: true,
   parseCheck (node) {
     expect(node).type.toBe<ValueNode>()

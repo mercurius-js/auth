@@ -2,6 +2,12 @@ import { FastifyPluginAsync } from 'fastify'
 import { DirectiveNode, GraphQLResolveInfo, ValueNode } from 'graphql'
 import { MercuriusContext } from 'mercurius'
 
+// The types below are declared as a namespace merged with the callable declaration
+// of the plugin, which is how a CommonJS module is described to TypeScript. The two
+// halves of that merge reference each other by design, so the two rules that read it
+// as an accident are turned off for this file.
+/* eslint-disable no-use-before-define, no-redeclare */
+
 type MercuriusAuthPlugin = FastifyPluginAsync<mercuriusAuth.MercuriusAuthOptions>
 
 declare namespace mercuriusAuth {
@@ -102,18 +108,26 @@ declare namespace mercuriusAuth {
   export type AuthRelation = 'and' | 'or'
 
   /**
+   * How many checks of a policy run: `'all'` evaluates every check, `'first'` stops
+   * at the first check that decides the outcome.
+   */
+  export type AuthRun = 'all' | 'first'
+
+  /**
    * A single auth check: a predicate over the value the checks are evaluated against.
    */
   export type AuthCheck<TPrepared=MercuriusContext> = (prepared: TPrepared) => boolean | Promise<boolean>
 
   /**
-   * Compose auth checks into a single check combined by `relation` (default: `'or'`).
-   * An empty list of checks denies, and any relation that is not exactly `'or'`
-   * combines as AND, so composition can never fail open. Compositions nest.
+   * Compose auth checks into a single check combined by `relation` (default: `'or'`)
+   * and evaluated according to `run` (default: `'all'`). An empty list of checks
+   * denies, and any relation that is not exactly `'or'` combines as AND, so
+   * composition can never fail open. Compositions nest.
    */
   export function compose<TPrepared=MercuriusContext>(
     checks: ReadonlyArray<AuthCheck<TPrepared>>,
-    relation?: AuthRelation
+    relation?: AuthRelation,
+    run?: AuthRun
   ): (prepared: TPrepared) => Promise<boolean>
 
   /**
@@ -142,6 +156,12 @@ declare namespace mercuriusAuth {
      * The relation applied when a policy does not specify one (default: `'or'`).
      */
     defaultRelation?: AuthRelation;
+    /**
+     * How many checks of a policy run (default: `'all'`): `'all'` evaluates every
+     * check concurrently, `'first'` evaluates them in order and stops at the first
+     * check that decides the outcome.
+     */
+    run?: AuthRun;
     /**
      * When `false`, every composed policy passes without evaluating its checks
      * (default: `true`).

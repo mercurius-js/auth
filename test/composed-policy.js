@@ -285,17 +285,19 @@ test('composed external policy - composes AND/OR over the policy values', async 
   t.assert.deepStrictEqual((await query(app, 'everyScope', 'a')).errors[0].message, 'Failed auth policy check on everyScope')
 })
 
-test('composed external policy - an unknown relation combines as AND', async (t) => {
+test('composed external policy - rejects a relation it does not define', async (t) => {
   t.plan(2)
 
   const app = await buildExternalApp(t, {
     Query: {
-      everyScope: { checks: [{ scope: 'a' }, { scope: 'b' }], relation: 'AND' }
+      // The enum spelling of the directive, which is not what a policy value uses.
+      anyScope: { checks: [{ scope: 'a' }], relation: 'OR' },
+      everyScope: { checks: [{ scope: 'a' }, { scope: 'b' }], relation: 'ALL' }
     }
   })
 
-  t.assert.deepStrictEqual((await query(app, 'everyScope', 'a')).errors[0].message, 'Failed auth policy check on everyScope')
-  t.assert.deepStrictEqual(await query(app, 'everyScope', 'a,b'), { data: { everyScope: true } })
+  t.assert.deepStrictEqual((await query(app, 'anyScope', 'a')).errors[0].message, "Invalid auth policy on anyScope: relation must be either 'and' or 'or'")
+  t.assert.deepStrictEqual((await query(app, 'everyScope', 'a,b')).errors[0].message, "Invalid auth policy on everyScope: relation must be either 'and' or 'or'")
 })
 
 test('composed external policy - defaultRelation applies to a policy with no relation', async (t) => {
@@ -399,10 +401,10 @@ test('composed directive policy - a directive without arguments denies', async (
   t.assert.strictEqual(await applyPolicy(authDirectiveAST, {}, {}, {}, { fieldName: 'add' }), false)
 })
 
-test('composed directive policy - a relation that is not one of the known enum values falls back', async (t) => {
+test('composed directive policy - rejects a relation it does not define', async (t) => {
   t.plan(2)
 
-  const { applyPolicy } = composeDirectivePolicy({ ...scopeCheckOptions, prepare: () => ['a'], defaultRelation: 'and' })
+  const { applyPolicy } = composeDirectivePolicy({ ...scopeCheckOptions, prepare: () => ['a'] })
   const directiveAST = relation => ({
     kind: 'Directive',
     name: { kind: 'Name', value: 'auth' },
@@ -422,10 +424,13 @@ test('composed directive policy - a relation that is not one of the known enum v
     ]
   })
 
-  // An unknown enum value, and a value that is not an enum at all: both are
-  // treated as unset, so `defaultRelation` decides.
-  t.assert.strictEqual(await applyPolicy(directiveAST({ kind: 'EnumValue', value: 'MAYBE' }), {}, {}, {}, { fieldName: 'add' }), false)
-  t.assert.strictEqual(await applyPolicy(directiveAST({ kind: 'StringValue', value: 'or' }), {}, {}, {}, { fieldName: 'add' }), false)
+  // An unknown enum value, and a value that is not an enum at all: a schema that
+  // declares the directive by hand can produce either, and neither is composed
+  // silently.
+  for (const relation of [{ kind: 'EnumValue', value: 'MAYBE' }, { kind: 'StringValue', value: 'or' }]) {
+    const result = await applyPolicy(directiveAST(relation), {}, {}, {}, { fieldName: 'add' })
+    t.assert.strictEqual(result.message, 'Invalid auth policy on add: relation must be either AND or OR')
+  }
 })
 
 test('composed directive policy - a parseCheck rejection that is not an Error is a coded policy error', async (t) => {
@@ -487,6 +492,7 @@ test('composed policy options - validates the options', async (t) => {
     [composeDirectivePolicy, { evaluate: () => true, prepare: 'nope' }, 'opts.prepare must be a function.'],
     [composeDirectivePolicy, { evaluate: () => true, onDeny: 'nope' }, 'opts.onDeny must be a function.'],
     [composeDirectivePolicy, { evaluate: () => true, defaultRelation: 'OR' }, "opts.defaultRelation must be either 'and' or 'or'."],
+    [composeDirectivePolicy, { evaluate: () => true, run: 'some' }, "opts.run must be either 'all' or 'first'."],
     [composeDirectivePolicy, { evaluate: () => true, enabled: 'nope' }, 'opts.enabled must be a boolean.'],
     [composeDirectivePolicy, { evaluate: () => true }, 'opts.parseCheck must be a function.'],
     [composeDirectivePolicy, { evaluate: () => true, parseCheck: () => ({}), authDirective: 1 }, 'opts.authDirective must be a string.'],
@@ -499,4 +505,92 @@ test('composed policy options - validates the options', async (t) => {
   for (const [composePolicy, opts, message] of invalid) {
     t.assert.throws(() => composePolicy(opts), new MER_AUTH_ERR_INVALID_OPTS(message))
   }
+})
+
+test('composed directive policy - a check that throws does not deny what another check grants', async (t) => {
+  t.plan(2)
+
+  const app = await buildDirectiveApp(t, {
+    evaluate: (check, scopes) => {
+      if (check.scope === 'a') {
+        throw new Error('scope service unavailable')
+      }
+      return scopes.includes(check.scope)
+    }
+  })
+
+  // OR: the check that passes decides, and the failing check's error is dropped.
+  t.assert.deepStrictEqual(await query(app, 'anyScope', 'b'), { data: { anyScope: true } })
+  // AND, and OR with nothing left to grant: the failing check explains the denial.
+  t.assert.deepStrictEqual((await query(app, 'anyScope', 'c')).errors[0].message, 'scope service unavailable')
+})
+
+test('composed directive policy - a check that throws denies under AND', async (t) => {
+  t.plan(1)
+
+  const app = await buildDirectiveApp(t, {
+    evaluate: (check, scopes) => {
+      if (check.scope === 'b') {
+        throw new Error('scope service unavailable')
+      }
+      return scopes.includes(check.scope)
+    }
+  })
+
+  t.assert.deepStrictEqual((await query(app, 'everyScope', 'a,b')).errors[0].message, 'scope service unavailable')
+})
+
+test('composed directive policy - a check rejection that is not an Error is a coded policy error', async (t) => {
+  t.plan(2)
+
+  const app = await buildDirectiveApp(t, {
+    evaluate: () => { throw 'not an Error' } // eslint-disable-line no-throw-literal
+  })
+
+  const { errors } = await query(app, 'anyScope', 'a')
+
+  t.assert.deepStrictEqual(errors[0].message, 'Invalid auth policy on anyScope: not an Error')
+  t.assert.deepStrictEqual((await query(app, 'anyScope', 'a')).data, { anyScope: null })
+})
+
+test('composed directive policy - run: first stops at the check that decides', async (t) => {
+  t.plan(4)
+
+  const evaluated = []
+  const options = {
+    evaluate: (check, scopes) => {
+      evaluated.push(check.scope)
+      return scopes.includes(check.scope)
+    }
+  }
+
+  const shortCircuit = await buildDirectiveApp(t, { ...options, run: 'first' })
+
+  t.assert.deepStrictEqual(await query(shortCircuit, 'anyScope', 'a,b'), { data: { anyScope: true } })
+  t.assert.deepStrictEqual(evaluated.splice(0), ['a'])
+
+  const runAll = await buildDirectiveApp(t, options)
+
+  t.assert.deepStrictEqual(await query(runAll, 'anyScope', 'a,b'), { data: { anyScope: true } })
+  t.assert.deepStrictEqual(evaluated.splice(0).sort(), ['a', 'b'])
+})
+
+test('composed external policy - run: first stops at the check that decides', async (t) => {
+  t.plan(2)
+
+  const evaluated = []
+  const app = await buildExternalApp(t, {
+    Query: {
+      everyScope: { checks: [{ scope: 'a' }, { scope: 'b' }], relation: 'and' }
+    }
+  }, {
+    run: 'first',
+    evaluate: (check, scopes) => {
+      evaluated.push(check.scope)
+      return scopes.includes(check.scope)
+    }
+  })
+
+  t.assert.deepStrictEqual((await query(app, 'everyScope', 'b')).errors[0].message, 'Failed auth policy check on everyScope')
+  t.assert.deepStrictEqual(evaluated, ['a'])
 })
