@@ -1,4 +1,4 @@
-import fastify from 'fastify'
+import fastify, { FastifyPluginAsync } from 'fastify'
 import { DirectiveNode, GraphQLResolveInfo, ValueNode } from 'graphql'
 import { MercuriusContext } from 'mercurius'
 import { expect } from 'tstyche'
@@ -17,6 +17,10 @@ import mercuriusAuth, {
 } from '..'
 
 const app = fastify()
+
+// The package is CommonJS: the default import resolves to the plugin itself, not
+// to the module namespace object, under every module mode.
+expect(mercuriusAuth).type.toBe<FastifyPluginAsync<MercuriusAuthOptions>>()
 
 // 1. BASIC USAGE: DEFAULT TYPES
 app.register(mercuriusAuth, {

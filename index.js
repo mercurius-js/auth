@@ -51,6 +51,10 @@ const plugin = fp(
 )
 
 module.exports = plugin
+// The plugin is also exposed as a named and a `default` export so that ESM and
+// bundler consumers resolve the plugin itself, not the module namespace object.
+module.exports.default = plugin
+module.exports.mercuriusAuth = plugin
 module.exports.compose = compose
 module.exports.composeDirectivePolicy = composeDirectivePolicy
 module.exports.composeExternalPolicy = composeExternalPolicy
