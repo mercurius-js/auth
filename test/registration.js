@@ -3,7 +3,6 @@
 const { describe, test } = require('node:test')
 const Fastify = require('fastify')
 const mercurius = require('mercurius')
-const { AssertionError } = require('assert')
 const mercuriusAuth = require('..')
 const { MER_AUTH_ERR_INVALID_OPTS } = require('../lib/errors')
 
@@ -25,21 +24,18 @@ const resolvers = {
 }
 
 test('registration - should error if mercurius is not loaded', async (t) => {
+  t.plan(2)
+
   const app = Fastify()
   t.after(() => app.close())
 
   try {
     await app.register(mercuriusAuth, {})
   } catch (error) {
-    t.assert.deepStrictEqual(
-      error,
-      new AssertionError({
-        message:
-          "The dependency 'mercurius' of plugin 'mercurius-auth' is not registered",
-        actual: false,
-        expected: true,
-        operator: '=='
-      })
+    t.assert.strictEqual(error.code, 'FST_ERR_PLUGIN_DEPENDENCY_NOT_REGISTERED')
+    t.assert.strictEqual(
+      error.message,
+      "The dependency 'mercurius' of plugin 'mercurius-auth' is not registered"
     )
   }
 })
