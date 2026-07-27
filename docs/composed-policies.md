@@ -279,7 +279,9 @@ mercuriusAuth.composeDirectivePolicy({
 })
 ```
 
-A `parseCheck`, `validate` or `prepare` failure signalled with something that is not an `Error` denies the field with `MER_AUTH_ERR_INVALID_POLICY`, so a policy that cannot be evaluated never grants access.
+A `parseCheck`, `validate` or `prepare` failure signalled with something that is not an `Error` denies the field with `MER_AUTH_ERR_INVALID_POLICY`, so a policy that cannot be evaluated never grants access. `onDeny` must likewise return an `Error`: anything else denies with `MER_AUTH_ERR_INVALID_POLICY`, because a truthy non-`Error` would be read as a grant.
+
+Leave `onDeny` out when using [schema replacement](schema-replacement.md). Replacement happens for a field whose policy returns `false`, and returning an error instead reports the error rather than replacing the value — which is the default denial's other advantage.
 
 ## Relation to `@fastify/auth`
 

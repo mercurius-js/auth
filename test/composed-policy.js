@@ -680,3 +680,51 @@ test('composed external policy - an onDeny that does not return an Error still d
   t.assert.deepStrictEqual(response.data, { anyScope: null })
   t.assert.deepStrictEqual(response.errors[0].message, 'Invalid auth policy on anyScope: onDeny must return an Error')
 })
+
+test('composed directive policy - the default denial replaces the value when schema replacement is enabled', async (t) => {
+  t.plan(3)
+
+  const app = Fastify()
+  t.after(() => app.close())
+
+  const { applyPolicy, sdl, authDirective } = composeDirectivePolicy(scopeCheckOptions)
+
+  app.register(mercurius, {
+    schema: `
+    ${sdl}
+
+    type Message {
+      title: String
+      secret: String @auth(checks: [{ scope: "a" }])
+    }
+
+    type Query {
+      message: Message
+    }
+`,
+    resolvers: {
+      Query: {
+        message: async () => ({ title: 'one', secret: 'classified' })
+      }
+    }
+  })
+  app.register(mercuriusAuth, {
+    mode: 'directive',
+    authDirective,
+    applyPolicy,
+    outputPolicyErrors: { enabled: false, valueOverride: 'redacted' }
+  })
+
+  await app.ready()
+
+  // Denying with `false` rather than an error is what lets the plugin replace the
+  // value instead of reporting a field error.
+  t.assert.deepStrictEqual(await query(app, 'message { title secret }', 'b'), {
+    data: { message: { title: 'one', secret: 'redacted' } }
+  })
+  const granted = await query(app, 'message { title secret }', 'a')
+  t.assert.deepStrictEqual(granted, {
+    data: { message: { title: 'one', secret: 'classified' } }
+  })
+  t.assert.strictEqual(granted.errors, undefined)
+})
