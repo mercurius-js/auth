@@ -300,17 +300,23 @@ describe('registration - external policy', () => {
     t.assert.ok('mercurius auth plugin is registered')
   })
 
-  test('cannot filter introspection schema on external mode', async (t) => {
+  test('can filter introspection schema on external mode', async (t) => {
     const app = Fastify()
     t.after(() => app.close())
     app.register(mercurius, {
       schema,
       resolvers
     })
-    await t.assert.rejects(async () => await app.register(mercuriusAuth, {
+    await app.register(mercuriusAuth, {
       applyPolicy: () => {},
       mode: 'external',
-      filterSchema: true
-    }), new MER_AUTH_ERR_INVALID_OPTS('opts.filterSchema cannot be used when mode is external.'))
+      filterSchema: true,
+      policy: {
+        Query: {
+          add: { some: 'policy' }
+        }
+      }
+    })
+    t.assert.ok('mercurius auth plugin is registered')
   })
 })

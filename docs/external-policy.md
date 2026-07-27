@@ -6,6 +6,7 @@
   - [Applying the policy on each field](#applying-the-policy-on-each-field)
 - [GraphQL field auth policy](#graphql-field-auth-policy)
 - [GraphQL Object type auth policy](#graphql-object-type-auth-policy)
+- [Schema filtering](schema-filtering.md#external-policy-mode)
 
 By default, Mercurius Auth runs in `directive` mode. To define out-of-band external auth policies in a policy system, we must set the `mode` to `'external'`. This is done at plugin registration.
 

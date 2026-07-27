@@ -28,6 +28,7 @@ Features:
   - [Schema filtering](docs/schema-filtering.md)
   - [Schema replacement](docs/schema-replacement.md)
 - [External Policy](docs/external-policy.md)
+  - [Schema filtering](docs/schema-filtering.md#external-policy-mode)
 - [Errors](docs/errors.md)
 - [Federation](docs/federation.md)
 

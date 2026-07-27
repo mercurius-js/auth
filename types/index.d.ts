@@ -86,6 +86,10 @@ export interface MercuriusAuthExternalPolicyOptions<TParent=any, TArgs=any, TCon
    * The auth policy definitions used to protect the types and fields within a GraphQL schema.
    */
   policy?: MercuriusAuthPolicy;
+  /**
+   * When set to true, the plugin will automatically filter the output Schema during Introspection queries if the applyPolicy function is not satisfated.
+   */
+  filterSchema?: boolean;
 }
 
 export type MercuriusAuthOptions<TParent=any, TArgs=any, TContext=MercuriusContext, TPolicy=any> = MercuriusAuthDirectiveOptions<TParent, TArgs, TContext, TPolicy> | MercuriusAuthExternalPolicyOptions<TParent, TArgs, TContext, TPolicy>

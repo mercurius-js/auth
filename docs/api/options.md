@@ -19,6 +19,8 @@
 
 * **policy** `MercuriusAuthPolicy` (optional) - the auth policy definition. The field definition is passed as the first argument when `applyPolicy` is called for the associated field.
 
+* **filterSchema** `boolean` - when `true`, [introspection queries](https://graphql.org/learn/introspection/) will only return the parts of the schema which are accessible based on the applied policies.
+
 #### Parameter: `MercuriusAuthPolicy`
 
 Extends: `Record<string, MercuriusAuthTypePolicy>`

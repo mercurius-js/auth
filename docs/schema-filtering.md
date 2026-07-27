@@ -117,6 +117,35 @@ Will make the user able to see the `notes` field.
 }
 ```
 
+## External Policy mode
+
+Schema filtering works the same way with an [External Policy](external-policy.md): the policy values the application maps to types and fields are the ones `applyPolicy` is called with, and the parts of the schema whose policies are not satisfied are hidden from introspection.
+
+```js
+app.register(mercuriusAuth, {
+  mode: 'external',
+  filterSchema: true,
+  authContext: function (context) {
+    return { permission: context.reply.request.headers['x-permission'] }
+  },
+  applyPolicy: async function hasPermissionPolicy (policy, parent, args, context, info) {
+    return context.auth.permission === policy.grant
+  },
+  policy: {
+    Message: {
+      notes: { grant: 'see-all' }
+    },
+    Query: {
+      publicMessages: { grant: 'see-messages' }
+    }
+  }
+})
+```
+
+A caller without the `see-all` permission does not see `Message.notes` in an introspection query, exactly as with the directive above. `__typePolicy` hides the whole type, and mapping a list of policy values to a field requires all of them to pass — the same rule the resolvers apply.
+
+A policy naming a type or a field the schema does not have is ignored: an external policy is written by the application rather than read from the schema, so it can outlive a schema change.
+
 ### Special usages
 
 Depending on the [`DirectiveLocations`](https://github.com/graphql/graphql-spec/blob/main/spec/Section%203%20--%20Type%20System.md#directives) you will have two main behaviors:
