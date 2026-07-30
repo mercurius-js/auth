@@ -32,7 +32,7 @@
   "devDependencies": {
     "@fastify/pre-commit": "^2.2.1",
     "@mercuriusjs/federation": "^4.0.0",
-    "@mercuriusjs/gateway": "^4.0.0",
+    "@mercuriusjs/gateway": "^5.2.0",
     "@sinonjs/fake-timers": "^10.0.2",
     "@types/node": "^20.1.0",
     "@types/ws": "^8.5.3",
