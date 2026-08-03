@@ -51,7 +51,7 @@
   },
   "dependencies": {
     "@fastify/error": "^4.0.0",
-    "fastify-plugin": "^5.0.0",
+    "fastify-plugin": "^6.0.0",
     "graphql": "^16.2.0"
   },
   "pre-commit": [
