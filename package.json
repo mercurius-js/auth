@@ -52,7 +52,7 @@
   "dependencies": {
     "@fastify/error": "^4.0.0",
     "fastify-plugin": "^5.0.0",
-    "graphql": "^16.2.0"
+    "graphql": "^17.0.2"
   },
   "pre-commit": [
     "lint"
