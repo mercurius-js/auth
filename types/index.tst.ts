@@ -171,6 +171,7 @@ interface CustomPolicy {
 }
 
 const externalPolicyOptions: MercuriusAuthOptions<CustomParent, CustomArgs, CustomContext, CustomPolicy> = {
+  filterSchema: true,
   async applyPolicy (policy, parent, args, context, info) {
     expect(policy).type.toBe<CustomPolicy>()
     expect(parent).type.toBe<CustomParent>()
