@@ -10,6 +10,7 @@ Features:
 - Works in both normal and gateway mode.
 - In addition to the matching auth directive, auth policies have access to the same GraphQL information that any GraphQL resolver has access to.
 - Build up an auth context to load identities onto the context before policies are applied.
+- Compose several auth checks on a field with an `AND`/`OR` relation.
 - Define custom errors.
 - GraphQL spec compliant.
 
@@ -24,6 +25,7 @@ Features:
 - [API](docs/api/options.md)
 - [Auth Context](docs/auth-context.md)
 - [Apply Policy](docs/apply-policy.md)
+  - [Composed Policies](docs/composed-policies.md)
 - [Auth Directive](docs/auth-directive.md)
   - [Schema filtering](docs/schema-filtering.md)
   - [Schema replacement](docs/schema-replacement.md)
