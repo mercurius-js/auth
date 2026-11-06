@@ -70,7 +70,7 @@ test('compose - supports synchronous checks', async (t) => {
   t.assert.strictEqual(await compose([() => true, () => false], 'and')({}), false)
 })
 
-test('compose - runs every check without short circuiting', async (t) => {
+test('compose - run: all runs every check without short circuiting', async (t) => {
   t.plan(3)
 
   const calls = []
@@ -79,11 +79,11 @@ test('compose - runs every check without short circuiting', async (t) => {
     return granted
   }
 
-  t.assert.strictEqual(await compose([record('a', true), record('b', false)], 'or')({}), true)
+  t.assert.strictEqual(await compose([record('a', true), record('b', false)], 'or', 'all')({}), true)
   t.assert.deepStrictEqual(calls.sort(), ['a', 'b'])
 
   const failure = new Error('kaboom')
-  await t.assert.rejects(compose([record('c', true), async () => { throw failure }], 'or')({}), failure)
+  await t.assert.rejects(compose([record('c', true), async () => { throw failure }], 'or', 'all')({}), failure)
 })
 
 test('compose - compositions nest', async (t) => {
@@ -123,7 +123,7 @@ test('compose - run: first denies an empty list of checks', async (t) => {
   t.assert.strictEqual(await compose([], 'and', 'first')({}), false)
 })
 
-test('compose - run: all is the default and runs every check', async (t) => {
+test('compose - run: first is the default and stops at the check that decides', async (t) => {
   t.plan(4)
 
   const calls = []
@@ -133,7 +133,7 @@ test('compose - run: all is the default and runs every check', async (t) => {
   }
 
   t.assert.strictEqual(await compose([record('a', true), record('b', true)], 'or')({}), true)
-  t.assert.deepStrictEqual(calls.splice(0).sort(), ['a', 'b'])
+  t.assert.deepStrictEqual(calls.splice(0), ['a'])
 
   t.assert.strictEqual(await compose([record('a', false), record('b', true)], 'and', 'all')({}), false)
   t.assert.deepStrictEqual(calls.splice(0).sort(), ['a', 'b'])

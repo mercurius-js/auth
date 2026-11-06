@@ -221,8 +221,7 @@ const directivePolicy = composeDirectivePolicy<ScopeCheck, string[]>({
   checkInput: 'scope: String!',
   authDirective: 'auth',
   defaultRelation: 'or',
-  run: 'first',
-  enabled: true,
+  run: 'all',
   parseCheck (node) {
     expect(node).type.toBe<ValueNode>()
     return { scope: 'admin' }
@@ -265,6 +264,11 @@ const externalPolicy = composeExternalPolicy<ScopeCheck, string[], CustomContext
   },
   validate (check) {
     expect(check).type.toBe<ScopeCheck>()
+  },
+  async onDeny (context, info) {
+    expect(context).type.toBe<CustomContext>()
+    expect(info).type.toBe<GraphQLResolveInfo>()
+    return new Error('denied')
   }
 })
 
@@ -275,7 +279,12 @@ const composedPolicy: ComposedPolicy<ScopeCheck> = {
   relation: 'and'
 }
 
-expect(composedPolicy.relation).type.toBe<AuthRelation | undefined>()
+expect(composedPolicy.relation).type.toBe<AuthRelation | null | undefined>()
+
+expect(composeExternalPolicy).type.not.toBeCallableWith({
+  evaluate: () => true,
+  onDeny: async () => 'denied'
+})
 
 app.register(mercuriusAuth, {
   mode: 'external',

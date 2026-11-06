@@ -97,8 +97,8 @@ export type MercuriusAuthOptions<TParent=any, TArgs=any, TContext=MercuriusConte
 export type AuthRelation = 'and' | 'or'
 
 /**
- * How many checks of a policy run: `'all'` evaluates every check, `'first'` stops
- * at the first check that decides the outcome.
+ * How many checks of a policy run: `'first'` stops at the first check that decides
+ * the outcome, `'all'` evaluates every check.
  */
 export type AuthRun = 'all' | 'first'
 
@@ -109,7 +109,7 @@ export type AuthCheck<TPrepared=MercuriusContext> = (prepared: TPrepared) => boo
 
 /**
  * Compose auth checks into a single check combined by `relation` (default: `'or'`)
- * and evaluated according to `run` (default: `'all'`). An empty list of checks
+ * and evaluated according to `run` (default: `'first'`). An empty list of checks
  * denies, and any relation that is not exactly `'or'` combines as AND, so
  * composition can never fail open. Compositions nest.
  */
@@ -130,35 +130,34 @@ export interface ComposedPolicyOptions<TCheck=any, TPrepared=MercuriusContext, T
    */
   evaluate: (check: TCheck, prepared: TPrepared) => boolean | Promise<boolean>;
   /**
-   * Derive the value the checks are judged against from the context, once per
-   * protected field, before any check runs. If it throws, the thrown error becomes
-   * the field's error, which distinguishes "authorization unavailable" from a
-   * denial. When omitted, the context itself is passed to `evaluate`.
+   * Derive the value the checks are judged against from the context. It runs once
+   * per request: the first protected field to need it calls it, and every other
+   * protected field of the same request reuses the result. If it throws, the thrown
+   * error becomes the error of every field that needs it, which distinguishes
+   * "authorization unavailable" from a denial. When omitted, the context itself is
+   * passed to `evaluate`.
    */
   prepare?: (context: TContext) => TPrepared | Promise<TPrepared>;
   /**
-   * The error returned when the composition denies. When omitted, the composed
-   * policy returns `false` and the plugin raises `MER_AUTH_ERR_FAILED_POLICY_CHECK`.
-   * It must return an `Error`: anything else denies the field with
+   * The error returned when the composition denies; it may be async. When omitted,
+   * the composed policy returns `false` and the plugin raises
+   * `MER_AUTH_ERR_FAILED_POLICY_CHECK`. It must return (or resolve to) an `Error`:
+   * anything else denies the field with
    * `MER_AUTH_ERR_INVALID_POLICY`, because a truthy non-`Error` would be read as a
    * grant.
    */
-  onDeny?: (context: TContext, info: GraphQLResolveInfo) => Error;
+  onDeny?: (context: TContext, info: GraphQLResolveInfo) => Error | Promise<Error>;
   /**
-   * The relation applied when a policy does not specify one (default: `'or'`).
+   * The relation applied when a policy does not specify one, or specifies `null`
+   * (default: `'or'`).
    */
   defaultRelation?: AuthRelation;
   /**
-   * How many checks of a policy run (default: `'all'`): `'all'` evaluates every
-   * check concurrently, `'first'` evaluates them in order and stops at the first
-   * check that decides the outcome.
+   * How many checks of a policy run (default: `'first'`): `'first'` evaluates them
+   * in order and stops at the first check that decides the outcome, `'all'`
+   * evaluates every check concurrently.
    */
   run?: AuthRun;
-  /**
-   * When `false`, every composed policy passes without evaluating its checks
-   * (default: `true`).
-   */
-  enabled?: boolean;
 }
 
 /**
@@ -198,7 +197,7 @@ export interface ComposedExternalPolicyOptions<TCheck=any, TPrepared=MercuriusCo
  */
 export interface ComposedPolicy<TCheck=any> {
   checks: ReadonlyArray<TCheck>;
-  relation?: AuthRelation;
+  relation?: AuthRelation | null;
 }
 
 /**

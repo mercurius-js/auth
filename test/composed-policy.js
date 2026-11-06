@@ -62,6 +62,7 @@ const buildDirectiveApp = async (t, opts) => {
       repeated: Boolean @auth(checks: [{ scope: "a" }]) @auth(checks: [{ scope: "b" }])
       noChecks: Boolean @auth(checks: [])
       singleCheck: Boolean @auth(checks: { scope: "a" })
+      nullRelation: Boolean @auth(checks: [{ scope: "a" }, { scope: "b" }], relation: null)
       malformed: Boolean @auth(checks: [{ scope: "" }])
       unprotected: Boolean
     }
@@ -74,6 +75,7 @@ const buildDirectiveApp = async (t, opts) => {
         repeated: async () => true,
         noChecks: async () => true,
         singleCheck: async () => true,
+        nullRelation: async () => true,
         malformed: async () => true,
         unprotected: async () => true
       }
@@ -207,16 +209,6 @@ test('composed directive policy - a prepare failure is the field error, not a de
   })
 
   t.assert.deepStrictEqual((await query(app, 'anyScope', 'a')).errors[0].message, 'identity unavailable')
-})
-
-test('composed directive policy - enabled: false passes every protected field', async (t) => {
-  t.plan(1)
-
-  const app = await buildDirectiveApp(t, { enabled: false })
-
-  t.assert.deepStrictEqual(await query(app, 'everyScope', 'c'), {
-    data: { everyScope: true }
-  })
 })
 
 test('composed directive policy - the checks of a field are parsed once', async (t) => {
@@ -382,18 +374,6 @@ test('composed external policy - without prepare the checks are judged against t
   t.assert.deepStrictEqual(await query(app, 'anyScope', 'a'), { data: { anyScope: true } })
 })
 
-test('composed external policy - enabled: false passes every protected field', async (t) => {
-  t.plan(1)
-
-  const app = await buildExternalApp(t, {
-    Query: {
-      everyScope: { checks: [{ scope: 'a' }], relation: 'and' }
-    }
-  }, { enabled: false })
-
-  t.assert.deepStrictEqual(await query(app, 'everyScope', 'c'), { data: { everyScope: true } })
-})
-
 test('composed directive policy - a directive without arguments denies', async (t) => {
   t.plan(1)
 
@@ -495,7 +475,6 @@ test('composed policy options - validates the options', async (t) => {
     [composeDirectivePolicy, { evaluate: () => true, onDeny: 'nope' }, 'opts.onDeny must be a function.'],
     [composeDirectivePolicy, { evaluate: () => true, defaultRelation: 'OR' }, "opts.defaultRelation must be either 'and' or 'or'."],
     [composeDirectivePolicy, { evaluate: () => true, run: 'some' }, "opts.run must be either 'all' or 'first'."],
-    [composeDirectivePolicy, { evaluate: () => true, enabled: 'nope' }, 'opts.enabled must be a boolean.'],
     [composeDirectivePolicy, { evaluate: () => true }, 'opts.parseCheck must be a function.'],
     [composeDirectivePolicy, { evaluate: () => true, parseCheck: () => ({}), authDirective: 1 }, 'opts.authDirective must be a string.'],
     [composeDirectivePolicy, { evaluate: () => true, parseCheck: () => ({}), checkInput: 1 }, 'opts.checkInput must be a string.'],
@@ -555,7 +534,7 @@ test('composed directive policy - a check rejection that is not an Error is a co
   t.assert.deepStrictEqual((await query(app, 'anyScope', 'a')).data, { anyScope: null })
 })
 
-test('composed directive policy - run: first stops at the check that decides', async (t) => {
+test('composed directive policy - stops at the check that decides by default, and run: all runs every check', async (t) => {
   t.plan(4)
 
   const evaluated = []
@@ -566,18 +545,18 @@ test('composed directive policy - run: first stops at the check that decides', a
     }
   }
 
-  const shortCircuit = await buildDirectiveApp(t, { ...options, run: 'first' })
+  const shortCircuit = await buildDirectiveApp(t, options)
 
   t.assert.deepStrictEqual(await query(shortCircuit, 'anyScope', 'a,b'), { data: { anyScope: true } })
   t.assert.deepStrictEqual(evaluated.splice(0), ['a'])
 
-  const runAll = await buildDirectiveApp(t, options)
+  const runAll = await buildDirectiveApp(t, { ...options, run: 'all' })
 
   t.assert.deepStrictEqual(await query(runAll, 'anyScope', 'a,b'), { data: { anyScope: true } })
   t.assert.deepStrictEqual(evaluated.splice(0).sort(), ['a', 'b'])
 })
 
-test('composed external policy - run: first stops at the check that decides', async (t) => {
+test('composed external policy - stops at the check that decides by default', async (t) => {
   t.plan(2)
 
   const evaluated = []
@@ -586,7 +565,6 @@ test('composed external policy - run: first stops at the check that decides', as
       everyScope: { checks: [{ scope: 'a' }, { scope: 'b' }], relation: 'and' }
     }
   }, {
-    run: 'first',
     evaluate: (check, scopes) => {
       evaluated.push(check.scope)
       return scopes.includes(check.scope)
@@ -727,4 +705,150 @@ test('composed directive policy - the default denial replaces the value when sch
     data: { message: { title: 'one', secret: 'classified' } }
   })
   t.assert.strictEqual(granted.errors, undefined)
+})
+
+test('composed directive policy - prepare runs once per request', async (t) => {
+  t.plan(5)
+
+  let prepared = 0
+  const app = await buildDirectiveApp(t, {
+    prepare: context => {
+      prepared += 1
+      return heldScopes(context)
+    }
+  })
+
+  t.assert.deepStrictEqual(await query(app, 'anyScope everyScope unqualified repeated', 'a,b'), {
+    data: { anyScope: true, everyScope: true, unqualified: true, repeated: true }
+  })
+  t.assert.strictEqual(prepared, 1)
+
+  const response = await query(app, 'anyScope everyScope', 'a')
+
+  t.assert.deepStrictEqual(response.data, { anyScope: true, everyScope: null })
+  t.assert.deepStrictEqual(response.errors[0].message, 'Failed auth policy check on everyScope')
+  t.assert.strictEqual(prepared, 2)
+})
+
+test('composed directive policy - a prepare failure is the error of every field of the request', async (t) => {
+  t.plan(3)
+
+  let prepared = 0
+  const app = await buildDirectiveApp(t, {
+    prepare: () => {
+      prepared += 1
+      throw new Error('identity unavailable')
+    }
+  })
+
+  const { errors } = await query(app, 'anyScope everyScope', 'a')
+
+  t.assert.deepStrictEqual(errors[0].message, 'identity unavailable')
+  t.assert.deepStrictEqual(errors[1].message, 'identity unavailable')
+  t.assert.strictEqual(prepared, 1)
+})
+
+test('composed external policy - prepare runs once per request', async (t) => {
+  t.plan(2)
+
+  let prepared = 0
+  const app = await buildExternalApp(t, {
+    Query: {
+      anyScope: { checks: [{ scope: 'a' }] },
+      everyScope: { checks: [{ scope: 'a' }, { scope: 'b' }], relation: 'and' }
+    }
+  }, {
+    prepare: async context => {
+      prepared += 1
+      return heldScopes(context)
+    }
+  })
+
+  t.assert.deepStrictEqual(await query(app, 'anyScope everyScope', 'a,b'), {
+    data: { anyScope: true, everyScope: true }
+  })
+  t.assert.strictEqual(prepared, 1)
+})
+
+test('composed directive policy - a null relation uses defaultRelation', async (t) => {
+  t.plan(3)
+
+  const orApp = await buildDirectiveApp(t)
+
+  t.assert.deepStrictEqual(await query(orApp, 'nullRelation', 'a'), { data: { nullRelation: true } })
+
+  const andApp = await buildDirectiveApp(t, { defaultRelation: 'and' })
+
+  t.assert.deepStrictEqual((await query(andApp, 'nullRelation', 'a')).errors[0].message, 'Failed auth policy check on nullRelation')
+  t.assert.deepStrictEqual(await query(andApp, 'nullRelation', 'a,b'), { data: { nullRelation: true } })
+})
+
+test('composed external policy - a null relation uses defaultRelation', async (t) => {
+  t.plan(2)
+
+  const app = await buildExternalApp(t, {
+    Query: {
+      everyScope: { checks: [{ scope: 'a' }, { scope: 'b' }], relation: null }
+    }
+  }, { defaultRelation: 'and' })
+
+  t.assert.deepStrictEqual((await query(app, 'everyScope', 'a')).errors[0].message, 'Failed auth policy check on everyScope')
+  t.assert.deepStrictEqual(await query(app, 'everyScope', 'a,b'), { data: { everyScope: true } })
+})
+
+test('composed directive policy - an async onDeny is awaited', async (t) => {
+  t.plan(2)
+
+  const app = await buildDirectiveApp(t, {
+    onDeny: async (context, info) => new Error(`custom auth error on ${info.fieldName}`)
+  })
+
+  t.assert.deepStrictEqual((await query(app, 'anyScope', 'c')).errors[0].message, 'custom auth error on anyScope')
+  t.assert.deepStrictEqual(await query(app, 'anyScope', 'a'), { data: { anyScope: true } })
+})
+
+test('composed external policy - an async onDeny that does not resolve to an Error still denies', async (t) => {
+  t.plan(2)
+
+  const app = await buildExternalApp(t, {
+    Query: {
+      anyScope: { checks: [{ scope: 'a' }] }
+    }
+  }, { onDeny: async () => 'nope' })
+
+  const response = await query(app, 'anyScope', 'c')
+
+  t.assert.deepStrictEqual(response.data, { anyScope: null })
+  t.assert.deepStrictEqual(response.errors[0].message, 'Invalid auth policy on anyScope: onDeny must return an Error')
+})
+
+test('composed external policy - checks that are not a list are an invalid policy', async (t) => {
+  t.plan(3)
+
+  const app = await buildExternalApp(t, {
+    Query: {
+      anyScope: { checks: { scope: 'a' } },
+      everyScope: { checks: 'a' }
+    }
+  })
+
+  const response = await query(app, 'anyScope everyScope', 'a')
+
+  t.assert.deepStrictEqual(response.data, { anyScope: null, everyScope: null })
+  t.assert.deepStrictEqual(response.errors[0].message, 'Invalid auth policy on anyScope: checks must be an array')
+  t.assert.deepStrictEqual(response.errors[1].message, 'Invalid auth policy on everyScope: checks must be an array')
+})
+
+test('composed directive policy - without prepare the checks are judged against the context', async (t) => {
+  t.plan(2)
+
+  const app = await buildDirectiveApp(t, {
+    prepare: undefined,
+    evaluate: (check, context) => {
+      t.assert.strictEqual(typeof context.reply, 'object')
+      return evaluateScopeCheck(check, heldScopes(context))
+    }
+  })
+
+  t.assert.deepStrictEqual(await query(app, 'singleCheck', 'a'), { data: { singleCheck: true } })
 })
