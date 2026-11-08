@@ -433,3 +433,119 @@ test('polling a filtered schema should complete the refresh successfully', async
     })
   }
 })
+
+test('polling a schema with a composed policy that cannot be evaluated logs it and keeps the field protected when checkPoliciesOnRegister is set', async (t) => {
+  t.plan(3)
+
+  const clock = FakeTimers.install({
+    shouldAdvanceTime: true,
+    advanceTimeDelta: 40
+  })
+  t.after(() => clock.uninstall())
+
+  const { applyPolicy, sdl, authDirective } = mercuriusAuth.composeDirectivePolicy({
+    checkInput: 'scope: String!',
+    parseCheck: node => ({ scope: node.fields.find(field => field.name.value === 'scope').value.value }),
+    evaluate: (check, context) => context.reply.request.headers['x-scope'] === check.scope
+  })
+
+  const user = {
+    id: 'u1',
+    name: 'John',
+    lastName: 'Doe'
+  }
+
+  const resolvers = {
+    Query: {
+      me: (root, args, context, info) => user
+    },
+    User: {
+      __resolveReference: (user, args, context, info) => user
+    }
+  }
+
+  const userService = Fastify()
+  // The gateway logs what the onGatewayReplaceSchema hook throws
+  let logRefreshError
+  const refreshError = new Promise(resolve => { logRefreshError = resolve })
+  const gateway = Fastify({ logger: { level: 'error', stream: { write: line => logRefreshError(JSON.parse(line).err) } } })
+  t.after(async () => {
+    await gateway.close()
+    await userService.close()
+  })
+
+  userService.register(mercuriusFederationPlugin, {
+    schema: `
+      ${sdl}
+
+      extend type Query {
+        me: User
+      }
+
+      type User @key(fields: "id") {
+        id: ID!
+        name: String @auth(checks: [{ scope: "admin" }])
+      }
+    `,
+    resolvers
+  })
+
+  await userService.listen({ port: 0 })
+
+  const userServicePort = userService.server.address().port
+
+  await gateway.register(mercuriusGateway, {
+    gateway: {
+      services: [
+        {
+          name: 'user',
+          url: `http://127.0.0.1:${userServicePort}/graphql`
+        }
+      ],
+      pollingInterval: 2000
+    }
+  })
+
+  await gateway.register(mercuriusAuth, {
+    applyPolicy,
+    authDirective,
+    checkPoliciesOnRegister: true
+  })
+
+  const query = selection => gateway.inject({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-scope': 'admin' },
+    url: '/graphql',
+    body: JSON.stringify({ query: `query { me { ${selection} } }` })
+  }).then(res => JSON.parse(res.body))
+
+  userService.graphql.replaceSchema(
+    buildFederationSchema(`
+      ${sdl}
+
+      extend type Query {
+        me: User
+      }
+
+      type User @key(fields: "id") {
+        id: ID!
+        name: String @auth(checks: [{ scope: "admin" }])
+        lastName: String @auth(checks: [{ scpoe: "admin" }])
+      }
+    `)
+  )
+  userService.graphql.defineResolvers(resolvers)
+
+  await clock.tickAsync(2000)
+
+  const error = await refreshError
+  t.assert.deepStrictEqual({ code: error.code, message: error.message }, {
+    code: 'MER_AUTH_ERR_INVALID_POLICY',
+    message: "Invalid auth policy on the schema: User.lastName: Cannot read properties of undefined (reading 'value')"
+  })
+  t.assert.deepStrictEqual(await query('id name'), { data: { me: { id: 'u1', name: 'John' } } })
+  t.assert.deepStrictEqual(await query('lastName'), {
+    data: { me: { lastName: null } },
+    errors: [{ message: "Cannot read properties of undefined (reading 'value')", locations: [{ line: 1, column: 14 }], path: ['me', 'lastName'] }]
+  })
+})

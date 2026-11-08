@@ -1,0 +1,362 @@
+# Composed Policies
+
+- [Why](#why)
+- [Directive mode](#directive-mode)
+- [External Policy mode](#external-policy-mode)
+- [Relations](#relations)
+- [Nesting checks](#nesting-checks)
+- [Errors](#errors)
+- [Checking policies at startup](#checking-policies-at-startup)
+- [Relation to `@fastify/auth`](#relation-to-fastifyauth)
+- [API](#api)
+
+`applyPolicy` is called once per protected field and its single result allows or denies that field. When a field is protected by more than one condition — "an admin **or** the owner of the record" — the combination has to be written by hand in every `applyPolicy`.
+
+The composed policies do that combination for you: you provide a single check and the plugin composes the checks of a field with an `AND`/`OR` relation, the way [`@fastify/auth`](https://github.com/fastify/fastify-auth) composes verifiers for a route. They are built on top of `applyPolicy`, so nothing else about the plugin changes.
+
+The plugin ships **no checks**: what a check contains, and what makes it pass, is entirely yours.
+
+## Why
+
+Composing by hand couples every policy to the shape of its checks:
+
+```js
+async applyPolicy (authDirectiveAST, parent, args, context, info) {
+  const required = authDirectiveAST.arguments[0].value.values.map(value => value.value)
+  // The AND/OR decision, the empty-list case and the error to return all live here,
+  // repeated in every application.
+  return required.some(scope => context.auth.scopes.includes(scope))
+}
+```
+
+With a composed policy, the application supplies only the check — one required scope, and whether the caller holds it:
+
+```js
+const { applyPolicy, sdl, authDirective } = mercuriusAuth.composeDirectivePolicy({
+  checkInput: 'scope: String!',
+  parseCheck: node => ({ scope: node.fields.find(field => field.name.value === 'scope').value.value }),
+  prepare: context => context.auth.scopes,
+  evaluate: (check, scopes) => scopes.includes(check.scope)
+})
+```
+
+## Directive mode
+
+`composeDirectivePolicy` returns the `applyPolicy` to register, the `sdl` that defines the directive, and the `authDirective` name:
+
+```js
+'use strict'
+
+const Fastify = require('fastify')
+const mercurius = require('mercurius')
+const mercuriusAuth = require('mercurius-auth')
+
+const app = Fastify()
+
+// A check is one required scope. `parseCheck` reads it out of the directive AST and
+// `evaluate` decides whether the caller holds it.
+const { applyPolicy, sdl, authDirective } = mercuriusAuth.composeDirectivePolicy({
+  checkInput: 'scope: String!',
+  parseCheck (node) {
+    if (node.kind !== 'ObjectValue') {
+      throw new Error('each check must be an object')
+    }
+    const scope = node.fields.find(field => field.name.value === 'scope')
+    if (scope?.value.kind !== 'StringValue') {
+      throw new Error('each check requires a scope')
+    }
+    return { scope: scope.value.value }
+  },
+  prepare (context) {
+    return context.auth.scopes
+  },
+  evaluate (check, scopes) {
+    return scopes.includes(check.scope)
+  }
+})
+
+const schema = `
+  ${sdl}
+
+  type Query {
+    add(x: Int, y: Int): Int @auth(checks: [{ scope: "admin" }, { scope: "owner" }], relation: OR)
+    subtract(x: Int, y: Int): Int @auth(checks: [{ scope: "admin" }, { scope: "audit" }], relation: AND)
+  }
+`
+
+const resolvers = {
+  Query: {
+    add: async (_, { x, y }) => x + y,
+    subtract: async (_, { x, y }) => x - y
+  }
+}
+
+app.register(mercurius, { schema, resolvers })
+
+app.register(mercuriusAuth, {
+  authContext (context) {
+    return { scopes: (context.reply.request.headers['x-scopes'] ?? '').split(',') }
+  },
+  applyPolicy,
+  authDirective
+})
+
+app.listen({ port: 3000 })
+```
+
+`add` is granted to a caller holding either scope, `subtract` only to a caller holding both.
+
+The generated `sdl` defines three things, named after the directive so that several composed directives can coexist in one schema:
+
+```graphql
+enum AuthRelation {
+  AND
+  OR
+}
+
+input AuthCheck {
+  scope: String!
+}
+
+directive @auth(
+  checks: [AuthCheck!]!
+  relation: AuthRelation
+) repeatable on OBJECT | FIELD_DEFINITION
+```
+
+Add it to the schema as above, or with [`extendSchema`](https://mercurius.dev/#/docs/api/options?id=graphql-decorator) when the schema is built elsewhere:
+
+```js
+await app.graphql.extendSchema(sdl)
+```
+
+A field with a single check can pass it directly — GraphQL coerces a single value where a list is expected, so `@auth(checks: { scope: "admin" })` is a list of one:
+
+```graphql
+type Query {
+  add(x: Int, y: Int): Int @auth(checks: { scope: "admin" })
+}
+```
+
+Because the directive is `repeatable`, repeating it on a field ANDs the composed policies — each occurrence is enforced independently:
+
+```graphql
+type Query {
+  # (admin OR owner) AND (audit)
+  add(x: Int, y: Int): Int
+    @auth(checks: [{ scope: "admin" }, { scope: "owner" }], relation: OR)
+    @auth(checks: [{ scope: "audit" }])
+}
+```
+
+### Schema filtering
+
+A composed directive does not yet work with [`filterSchema: true`](schema-filtering.md). Its `checks` argument takes an input type, and schema filtering currently fails for any auth directive that takes a named input type: the schema is rejected with `Schema must contain uniquely named types but contains multiple types named "AuthCheck"`. The fix is in [#138](https://github.com/mercurius-js/auth/pull/138). Until it lands, leave `filterSchema` off when you use `composeDirectivePolicy`.
+
+## External Policy mode
+
+`composeExternalPolicy` reads the checks from the policy values mapped onto types and fields, so no SDL is involved:
+
+```js
+'use strict'
+
+const Fastify = require('fastify')
+const mercurius = require('mercurius')
+const mercuriusAuth = require('mercurius-auth')
+
+const app = Fastify()
+
+const { applyPolicy } = mercuriusAuth.composeExternalPolicy({
+  // Optional: reject a malformed check up front, the way `parseCheck` does.
+  validate (check) {
+    if (typeof check.scope !== 'string') {
+      throw new Error('each check requires a scope')
+    }
+  },
+  prepare (context) {
+    return context.auth.scopes
+  },
+  evaluate (check, scopes) {
+    return scopes.includes(check.scope)
+  }
+})
+
+const schema = `
+  type Message {
+    title: String
+    message: String
+    adminMessage: String
+  }
+
+  type Query {
+    messages: [Message]
+  }
+`
+
+app.register(mercurius, {
+  schema,
+  resolvers: {
+    Query: {
+      messages: async () => [{ title: 'one', message: 'one', adminMessage: 'admin one' }]
+    }
+  }
+})
+
+app.register(mercuriusAuth, {
+  authContext (context) {
+    return { scopes: (context.reply.request.headers['x-scopes'] ?? '').split(',') }
+  },
+  mode: 'external',
+  applyPolicy,
+  policy: {
+    Message: {
+      __typePolicy: { checks: [{ scope: 'user' }] },
+      adminMessage: { checks: [{ scope: 'admin' }, { scope: 'support' }], relation: 'or' }
+    },
+    Query: {
+      messages: { checks: [{ scope: 'user' }, { scope: 'audit' }], relation: 'and' }
+    }
+  }
+})
+
+app.listen({ port: 3000 })
+```
+
+A mapped value that carries no `checks` denies the field, so a policy value of another shape can never accidentally grant access. A `checks` that is not a list — a single check object, for instance — is an authoring mistake, and the field is denied with `MER_AUTH_ERR_INVALID_POLICY`. Unlike the directive, where GraphQL coerces a single value into a list of one, a policy value is plain JavaScript and is not coerced.
+
+## Relations
+
+- `OR` (`'or'` in external mode) grants when any check passes.
+- `AND` (`'and'`) grants only when every check passes.
+- A field that does not specify a relation, or sets it to `null`, uses `defaultRelation`, which is `'or'` unless you set it.
+- An **empty list of checks denies**: a protected field with nothing to satisfy must never pass.
+- A relation spelled in any other way — `'AND'` in an external policy value, an enum value the generated directive does not define — is an authoring mistake, and the field is denied with `MER_AUTH_ERR_INVALID_POLICY` rather than silently composed.
+
+By default the checks of a field run in order, and evaluation stops at the first one that decides the outcome — a check that passes under OR, or one that fails under AND — as `@fastify/auth` does. Put the cheap checks first: under OR, an expensive check such as a database lookup then never runs once a cheap admin check has granted access. Set `run: 'all'` to run every check, concurrently, for instance when checks log or audit and must run under either relation:
+
+```js
+mercuriusAuth.composeDirectivePolicy({ parseCheck, evaluate, run: 'all' })
+```
+
+## Nesting checks
+
+`compose` is the combinator underneath both modes, exported for checks that are themselves compositions. It composes plain predicates over any value, so compositions nest without a depth limit:
+
+```js
+const { compose } = require('mercurius-auth')
+
+// isAdmin OR (isOwner AND isVerified)
+const check = compose([isAdmin, compose([isOwner, isVerified], 'and')], 'or')
+
+if (await check(context)) { /* granted */ }
+```
+
+There is no depth limit, where `@fastify/auth` supports a single level of sub-arrays. A policy's own `checks` list is flat: to group checks within a policy, either compose them in `evaluate` — a check whose shape holds nested checks — or repeat the directive, which ANDs the composed policies of the field.
+
+## Errors
+
+A composed policy distinguishes four outcomes:
+
+| Outcome | Result |
+| --- | --- |
+| Granted | `true` — the resolver runs. |
+| Denied | `false`, which the plugin reports as [`MER_AUTH_ERR_FAILED_POLICY_CHECK`](errors.md) naming the field. Provide `onDeny` to return your own error instead. |
+| Not evaluated | The error that `parseCheck`, `validate` or `prepare` threw, returned as the field's error. |
+| Denied by a check that failed | The error that `evaluate` threw, returned as the field's error. |
+
+A check that throws is a check that did not pass, the way a `@fastify/auth` verifier that calls `done(err)` is: its error is reported only if the composition ends up denying, so one failing check cannot deny a field that another check grants under `OR`.
+
+The "Not evaluated" outcome is what separates "you may not do this" from "authorization could not be established", which usually deserve different messages and status codes:
+
+```js
+mercuriusAuth.composeDirectivePolicy({
+  parseCheck,
+  evaluate,
+  prepare (context) {
+    if (typeof context.auth === 'undefined') {
+      throw new mercurius.ErrorWithProps('identity unavailable', { code: 'UNAUTHENTICATED' }, 401)
+    }
+    return context.auth.scopes
+  },
+  onDeny (context, info) {
+    return new mercurius.ErrorWithProps(`unauthorized on ${info.fieldName}`, { code: 'FORBIDDEN' }, 403)
+  }
+})
+```
+
+A `parseCheck`, `validate` or `prepare` failure signalled with something that is not an `Error` denies the field with `MER_AUTH_ERR_INVALID_POLICY`, so a policy that cannot be evaluated never grants access. `onDeny` may be async, and must likewise return (or resolve to) an `Error`: anything else denies with `MER_AUTH_ERR_INVALID_POLICY`, because a truthy non-`Error` would be read as a grant.
+
+Leave `onDeny` out when using [schema replacement](schema-replacement.md). Replacement happens for a field whose policy returns `false`, and returning an error instead reports the error rather than replacing the value — which is the default denial's other advantage.
+
+## Checking policies at startup
+
+graphql-js does not check the values of directive arguments against their input types when it builds a schema, so a typo such as `@auth(checks: [{ scpoe: "admin" }])` is accepted. By default, a policy that cannot be evaluated is only found when a request reaches its field, and that field then errors on every request — with the one-line `parseCheck` above, with a raw `TypeError`.
+
+Set the plugin's `checkPoliciesOnRegister` option to find these mistakes when the plugin registers instead:
+
+```js
+app.register(mercuriusAuth, {
+  applyPolicy,
+  authDirective,
+  checkPoliciesOnRegister: true
+})
+```
+
+Every policy is then resolved as the first request to reach it would: each check goes through `parseCheck` (or `validate` in external mode), and the relation and the shape of `checks` are checked. Registration fails with a single `MER_AUTH_ERR_INVALID_POLICY` that lists every policy that cannot be evaluated, by type and field, with the position of the directive (or of the policy value) when a field has several:
+
+```
+Invalid auth policy on the schema: Query.add: Cannot read properties of undefined (reading 'value'); Query.subtract (@auth #2): relation must be either AND or OR
+```
+
+In external mode the error is on `opts.policy`. `parseCheck` and `validate` are synchronous, as on the request path, and the parsed checks are cached, so they are not parsed again when requests arrive. Nothing changes at request time: `prepare` and `evaluate` still run per request, and an empty `checks` list still denies rather than failing registration.
+
+The option requires the `applyPolicy` returned by `composeDirectivePolicy` or `composeExternalPolicy`, as is: registration fails with `MER_AUTH_ERR_INVALID_OPTS` for any other `applyPolicy`. With [`@mercuriusjs/gateway`](federation.md), the policies of a refreshed schema are checked as well; the gateway serves the new schema before the plugin sees it, so its fields are protected first and the error is logged by the gateway, while the fields that cannot be evaluated keep erroring per request.
+
+## Relation to `@fastify/auth`
+
+The composed policies are the GraphQL counterpart of [`@fastify/auth`](https://github.com/fastify/fastify-auth): the same composition, applied at the seam a GraphQL field has rather than at a route's `preHandler`.
+
+| `@fastify/auth` | Composed policies |
+| --- | --- |
+| `fastify.auth([verifier, ...], { relation })` per route | `checks` + `relation` per protected field, from the directive or the policy value |
+| `defaultRelation`, default `'or'` | `defaultRelation`, default `'or'` |
+| Verifiers are supplied by the application | Checks are supplied by the application: `parseCheck`/`validate` and `evaluate` |
+| A verifier signals failure with `done(err)`, and its error is reported only when the composition fails | A check signals failure by returning `false`, or with an error by throwing, which is reported only when the composition denies |
+| Short circuits by default; `run: 'all'` runs every verifier | Short circuits by default; `run: 'all'` runs every check, concurrently |
+| One level of sub-arrays, combined with the opposite relation | `compose` nests without a limit; within a policy, group with a repeated directive or in `evaluate` |
+| Rejects a relation that is neither `'or'` nor `'and'` | Rejects a relation the mode does not define, per field, with `MER_AUTH_ERR_INVALID_POLICY` |
+| `fastify.auth([])` throws `Missing auth functions` at wiring time | An empty `checks` list denies the field: a schema can declare one, and a denial is the fail-closed reading |
+| Replies `401` on failure | Returns a GraphQL field error; use `onDeny` with mercurius' `ErrorWithProps` to choose the code and status |
+
+## API
+
+### `composeDirectivePolicy(options)`
+
+Returns `{ applyPolicy, sdl, authDirective }`.
+
+- **evaluate** `(check: any, prepared: any) => boolean | Promise<boolean>` - judge one check against the `prepare`d value. Called once per check of the matching policy.
+- **parseCheck** `(node: ValueNode) => any` - parse one element of the directive's `checks` list. Throw to reject a malformed check.
+- **prepare** `(context: MercuriusContext) => any` (optional) - derive the value the checks are judged against from the context. It runs once per request: the first protected field that needs it calls it, and the other protected fields of that request reuse the result. If it throws, every field that needs it gets that error. When omitted, the context itself is passed to `evaluate`.
+- **onDeny** `(context: MercuriusContext, info: GraphQLResolveInfo) => Error | Promise<Error>` (optional) - the error returned when the composition denies. Defaults to returning `false`, which the plugin reports as `MER_AUTH_ERR_FAILED_POLICY_CHECK`. It may be async, and must return (or resolve to) an `Error`: the field is denied with `MER_AUTH_ERR_INVALID_POLICY` if it returns anything else, since a truthy non-`Error` would otherwise be read as a grant.
+- **defaultRelation** `'and' | 'or'` (optional, default: `'or'`) - the relation applied to a field that does not specify one, or sets it to `null`.
+- **run** `'first' | 'all'` (optional, default: `'first'`) - `'first'` evaluates the checks of a policy in order and stops at the first check that decides the outcome, `'all'` evaluates every check concurrently.
+- **authDirective** `string` (optional, default: `'auth'`) - the name of the composed directive. The generated type names are derived from it.
+- **checkInput** `string` (optional, default: `'requires: [String!]!'`) - the body of the generated `<Name>Check` input type.
+
+The checks of a field are parsed once, not per request.
+
+### `composeExternalPolicy(options)`
+
+Returns `{ applyPolicy }`. Takes the same options as `composeDirectivePolicy` except `parseCheck`, `authDirective` and `checkInput`, plus:
+
+- **validate** `(check: any) => void` (optional) - validate one check of a policy value. Throw to reject it. When omitted, checks are evaluated as supplied.
+
+The checks of a policy value are validated once, not per request.
+
+### `composeDirectiveSdl(authDirective, checkInput)`
+
+Returns the SDL defining the composed directive: the `<Name>Relation` enum, the `<Name>Check` input and the repeatable `@<name>(checks, relation)` directive. `composeDirectivePolicy` calls it for you; call it directly when the schema is assembled before the policy.
+
+### `compose(checks, relation, run)`
+
+Composes checks — predicates over any value — into a single check combined by `relation` (default: `'or'`) and evaluated according to `run` (default: `'first'`). An empty list of checks denies. Compositions nest.

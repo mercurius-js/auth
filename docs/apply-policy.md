@@ -7,6 +7,8 @@ When called, the `applyPolicy` Promise provides the matching policy as a paramet
 
 The value of the policy parameter is dependent on the mode of operation:
 
+When a field is protected by several conditions that combine with an `AND`/`OR` relation, the plugin can build the `applyPolicy` for you from a single check: see [Composed Policies](composed-policies.md).
+
 ## Directive mode
 
 Here, the first parameter is the matching auth directive AST. This can be used to read the directive policy definition and apply accordingly.

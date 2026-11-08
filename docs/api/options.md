@@ -8,6 +8,7 @@
 
 * **applyPolicy** `(policy: any, parent: object, args: Record<string, any>, context: MercuriusContext, info: GraphQLResolveInfo) => Promise<boolean | Error>` - the policy promise to run when an auth protected field is selected by the query. This must return `true` in order to pass the check and allow access to the protected field.
 * **authContext** `(context: MercuriusContext) => object | Promise<object>` (optional) - assigns the returned data to `MercuriusContext.auth` for use in the `applyPolicy` function. This runs within a [`preExecution`](https://mercurius.dev/#/docs/hooks?id=preexecution) Mercurius GraphQL request hook.
+* **checkPoliciesOnRegister** `boolean` (optional, default: `false`) - when `true`, every policy is resolved when the plugin registers, and registration fails with `MER_AUTH_ERR_INVALID_POLICY`, listing each policy that cannot be evaluated. Requires the `applyPolicy` of a [composed policy](../composed-policies.md#checking-policies-at-startup).
 * **mode** `'directive' | 'external'` (optional, default: `'directive'`) - the mode of operation for the plugin. Depending on the mode of operation selected, this has the following options:
 
 ### `directive` (default) mode
