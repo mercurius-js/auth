@@ -6,6 +6,7 @@
 - [Relations](#relations)
 - [Nesting checks](#nesting-checks)
 - [Errors](#errors)
+- [Checking policies at startup](#checking-policies-at-startup)
 - [Relation to `@fastify/auth`](#relation-to-fastifyauth)
 - [API](#api)
 
@@ -286,6 +287,30 @@ mercuriusAuth.composeDirectivePolicy({
 A `parseCheck`, `validate` or `prepare` failure signalled with something that is not an `Error` denies the field with `MER_AUTH_ERR_INVALID_POLICY`, so a policy that cannot be evaluated never grants access. `onDeny` may be async, and must likewise return (or resolve to) an `Error`: anything else denies with `MER_AUTH_ERR_INVALID_POLICY`, because a truthy non-`Error` would be read as a grant.
 
 Leave `onDeny` out when using [schema replacement](schema-replacement.md). Replacement happens for a field whose policy returns `false`, and returning an error instead reports the error rather than replacing the value — which is the default denial's other advantage.
+
+## Checking policies at startup
+
+graphql-js does not check the values of directive arguments against their input types when it builds a schema, so a typo such as `@auth(checks: [{ scpoe: "admin" }])` is accepted. By default, a policy that cannot be evaluated is only found when a request reaches its field, and that field then errors on every request — with the one-line `parseCheck` above, with a raw `TypeError`.
+
+Set the plugin's `checkPoliciesOnRegister` option to find these mistakes when the plugin registers instead:
+
+```js
+app.register(mercuriusAuth, {
+  applyPolicy,
+  authDirective,
+  checkPoliciesOnRegister: true
+})
+```
+
+Every policy is then resolved as the first request to reach it would: each check goes through `parseCheck` (or `validate` in external mode), and the relation and the shape of `checks` are checked. Registration fails with a single `MER_AUTH_ERR_INVALID_POLICY` that lists every policy that cannot be evaluated, by type and field, with the position of the directive (or of the policy value) when a field has several:
+
+```
+Invalid auth policy on the schema: Query.add: Cannot read properties of undefined (reading 'value'); Query.subtract (@auth #2): relation must be either AND or OR
+```
+
+In external mode the error is on `opts.policy`. `parseCheck` and `validate` are synchronous, as on the request path, and the parsed checks are cached, so they are not parsed again when requests arrive. Nothing changes at request time: `prepare` and `evaluate` still run per request, and an empty `checks` list still denies rather than failing registration.
+
+The option requires the `applyPolicy` returned by `composeDirectivePolicy` or `composeExternalPolicy`, as is: registration fails with `MER_AUTH_ERR_INVALID_OPTS` for any other `applyPolicy`. With [`@mercuriusjs/gateway`](federation.md), the policies of a refreshed schema are checked as well; the gateway serves the new schema before the plugin sees it, so its fields are protected first and the error is logged by the gateway, while the fields that cannot be evaluated keep erroring per request.
 
 ## Relation to `@fastify/auth`
 

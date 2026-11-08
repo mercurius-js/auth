@@ -251,6 +251,18 @@ app.register(mercuriusAuth, {
   applyPolicy: directivePolicy.applyPolicy
 })
 
+app.register(mercuriusAuth, {
+  authDirective: directivePolicy.authDirective,
+  applyPolicy: directivePolicy.applyPolicy,
+  checkPoliciesOnRegister: true
+})
+
+expect(mercuriusAuth).type.not.toBeCallableWith(app, {
+  authDirective: directivePolicy.authDirective,
+  applyPolicy: directivePolicy.applyPolicy,
+  checkPoliciesOnRegister: 'yes'
+})
+
 // 3. External mode
 const externalPolicy = composeExternalPolicy<ScopeCheck, string[], CustomContext>({
   prepare (context) {
@@ -289,6 +301,7 @@ expect(composeExternalPolicy).type.not.toBeCallableWith({
 app.register(mercuriusAuth, {
   mode: 'external',
   applyPolicy: externalPolicy.applyPolicy,
+  checkPoliciesOnRegister: true,
   policy: {
     Query: {
       messages: composedPolicy

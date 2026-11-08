@@ -852,3 +852,188 @@ test('composed directive policy - without prepare the checks are judged against 
 
   t.assert.deepStrictEqual(await query(app, 'singleCheck', 'a'), { data: { singleCheck: true } })
 })
+
+const registerCheckedDirectiveApp = async (t, schema, opts, resolvers) => {
+  const app = Fastify()
+  t.after(() => app.close())
+
+  const { applyPolicy, sdl, authDirective } = composeDirectivePolicy({ ...scopeCheckOptions, ...opts })
+
+  app.register(mercurius, { schema: `${sdl}\n${schema}`, resolvers })
+  app.register(mercuriusAuth, { authDirective, applyPolicy, checkPoliciesOnRegister: true })
+
+  await app.ready()
+  return app
+}
+
+test('composed directive policy - checkPoliciesOnRegister rejects a misspelled check at startup', async (t) => {
+  t.plan(1)
+
+  // The one-line parseCheck: a misspelled field is accepted by graphql-js when the
+  // schema is built, and without the check every request to the field would error.
+  await t.assert.rejects(registerCheckedDirectiveApp(t, `
+    type Query {
+      add: Boolean @auth(checks: [{ scpoe: "admin" }])
+    }
+  `, {
+    parseCheck: node => ({ scope: node.fields.find(field => field.name.value === 'scope').value.value })
+  }), {
+    code: 'MER_AUTH_ERR_INVALID_POLICY',
+    message: "Invalid auth policy on the schema: Query.add: Cannot read properties of undefined (reading 'value')"
+  })
+})
+
+test('composed directive policy - checkPoliciesOnRegister lists every policy that cannot be evaluated', async (t) => {
+  t.plan(1)
+
+  await t.assert.rejects(registerCheckedDirectiveApp(t, `
+    type Message @auth(checks: [{ scope: "" }]) {
+      title: String
+    }
+
+    type Query {
+      valid: Boolean @auth(checks: [{ scope: "a" }])
+      misspelled: Boolean @auth(checks: [{ scpoe: "a" }])
+      repeated: Boolean @auth(checks: [{ scope: "a" }]) @auth(checks: [{ scope: "b" }], relation: MAYBE)
+      messages: [Message]
+    }
+  `), {
+    code: 'MER_AUTH_ERR_INVALID_POLICY',
+    message: 'Invalid auth policy on the schema: ' + [
+      'Message: each check requires a non-empty scope',
+      'Query.misspelled: each check requires a non-empty scope',
+      'Query.repeated (@auth #2): relation must be either AND or OR'
+    ].join('; ')
+  })
+})
+
+test('composed directive policy - checkPoliciesOnRegister parses a valid schema once, at startup', async (t) => {
+  t.plan(4)
+
+  let parsed = 0
+  const app = await registerCheckedDirectiveApp(t, `
+    type Query {
+      anyScope: Boolean @auth(checks: [{ scope: "a" }, { scope: "b" }], relation: OR)
+      repeated: Boolean @auth(checks: [{ scope: "a" }]) @auth(checks: [{ scope: "b" }])
+    }
+  `, {
+    parseCheck (node) {
+      parsed++
+      return parseScopeCheck(node)
+    }
+  }, {
+    Query: { anyScope: async () => true, repeated: async () => true }
+  })
+
+  t.assert.strictEqual(parsed, 4)
+  t.assert.deepStrictEqual(await query(app, 'anyScope', 'b'), { data: { anyScope: true } })
+  t.assert.deepStrictEqual((await query(app, 'repeated', 'a')).errors[0].message, 'Failed auth policy check on repeated')
+  t.assert.strictEqual(parsed, 4)
+})
+
+test('composed directive policy - without checkPoliciesOnRegister a policy that cannot be evaluated errors on request', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.after(() => app.close())
+
+  const { applyPolicy, sdl, authDirective } = composeDirectivePolicy(scopeCheckOptions)
+
+  app.register(mercurius, {
+    schema: `
+    ${sdl}
+
+    type Query {
+      misspelled: Boolean @auth(checks: [{ scpoe: "a" }])
+    }
+`,
+    resolvers: { Query: { misspelled: async () => true } }
+  })
+  app.register(mercuriusAuth, { authDirective, applyPolicy, checkPoliciesOnRegister: false })
+
+  await app.ready()
+
+  t.assert.strictEqual((await query(app, 'misspelled', 'a')).errors[0].message, 'each check requires a non-empty scope')
+})
+
+test('composed external policy - checkPoliciesOnRegister lists every policy that cannot be evaluated', async (t) => {
+  t.plan(1)
+
+  const app = Fastify()
+  t.after(() => app.close())
+
+  const { applyPolicy } = composeExternalPolicy({
+    validate (check) {
+      if (typeof check.scope !== 'string') {
+        throw new Error('each check requires a scope')
+      }
+    },
+    evaluate: evaluateScopeCheck
+  })
+
+  app.register(mercurius, { schema: 'type Query { anyScope: Boolean, everyScope: Boolean }' })
+  app.register(mercuriusAuth, {
+    mode: 'external',
+    applyPolicy,
+    checkPoliciesOnRegister: true,
+    policy: {
+      Query: {
+        __typePolicy: { checks: [{ scpoe: 'a' }] },
+        anyScope: { checks: { scope: 'a' } },
+        everyScope: [{ checks: [{ scope: 'a' }] }, { checks: [{ scope: 'b' }], relation: 'AND' }]
+      }
+    }
+  })
+
+  await t.assert.rejects(app.ready(), {
+    code: 'MER_AUTH_ERR_INVALID_POLICY',
+    message: 'Invalid auth policy on opts.policy: ' + [
+      'Query: each check requires a scope',
+      'Query.anyScope: checks must be an array',
+      "Query.everyScope (policy #2): relation must be either 'and' or 'or'"
+    ].join('; ')
+  })
+})
+
+test('composed external policy - checkPoliciesOnRegister accepts a valid policy', async (t) => {
+  t.plan(2)
+
+  const app = Fastify()
+  t.after(() => app.close())
+
+  const { applyPolicy } = composeExternalPolicy({ prepare: heldScopes, evaluate: evaluateScopeCheck })
+
+  app.register(mercurius, {
+    schema: 'type Query { anyScope: Boolean }',
+    resolvers: { Query: { anyScope: async () => true } }
+  })
+  app.register(mercuriusAuth, {
+    mode: 'external',
+    applyPolicy,
+    checkPoliciesOnRegister: true,
+    policy: { Query: { anyScope: { checks: [{ scope: 'a' }, { scope: 'b' }], relation: 'or' } } }
+  })
+
+  await app.ready()
+
+  t.assert.deepStrictEqual(await query(app, 'anyScope', 'b'), { data: { anyScope: true } })
+  t.assert.strictEqual((await query(app, 'anyScope', 'c')).errors[0].message, 'Failed auth policy check on anyScope')
+})
+
+test('composed policy options - validates checkPoliciesOnRegister', async (t) => {
+  const { applyPolicy } = composeExternalPolicy({ evaluate: evaluateScopeCheck })
+  const invalid = [
+    [{ applyPolicy, checkPoliciesOnRegister: 'yes' }, 'opts.checkPoliciesOnRegister must be a boolean.'],
+    [{ applyPolicy: async () => true, checkPoliciesOnRegister: true }, 'opts.checkPoliciesOnRegister requires the applyPolicy of composeDirectivePolicy or composeExternalPolicy.']
+  ]
+
+  t.plan(invalid.length)
+
+  for (const [opts, message] of invalid) {
+    const app = Fastify()
+    t.after(() => app.close())
+    app.register(mercurius, { schema: 'type Query { add: Boolean }' })
+    app.register(mercuriusAuth, { mode: 'external', ...opts })
+    await t.assert.rejects(app.ready(), new MER_AUTH_ERR_INVALID_OPTS(message))
+  }
+})

@@ -51,6 +51,14 @@ export interface MercuriusAuthBaseOptions<TParent=any, TArgs=any, TContext=Mercu
    * The mode of operation for Mercurius Auth (default: `'directive'`).
    */
   mode?: MercuriusAuthMode;
+  /**
+   * When `true`, every policy is resolved when the plugin registers, and the plugin
+   * fails to register with `MER_AUTH_ERR_INVALID_POLICY`, listing each policy that
+   * cannot be evaluated, instead of erroring on every request to its field
+   * (default: `false`). Requires the `applyPolicy` of `composeDirectivePolicy` or
+   * `composeExternalPolicy`.
+   */
+  checkPoliciesOnRegister?: boolean;
 }
 
 export interface MercuriusAuthDirectiveOptions<TParent=any, TArgs=any, TContext=MercuriusContext, TPolicy=DirectiveNode> extends MercuriusAuthBaseOptions<TParent, TArgs, TContext, TPolicy> {
